@@ -247,12 +247,12 @@
 <tr>
 <td>Chronos-2</td>
 <td><code>amazon/chronos-2</code></td>
-<td>unregistered reference adapter; not supported in <code>0.1.0</code>
-</td>
+<td>unregistered until the required native <code>0.1.0</code> port passes conformance and parity</td>
 </tr>
 </tbody>
 </table>
 <p>TimesFM is marked supported because it passes both the architecture conformance gate and every committed numerical-parity fixture against the pinned official implementation.</p>
+<p>The release roadmap adds Toto 2.0 4M and a new native Chronos-2 port before <code>0.1.0</code>; Granite PatchTST-FM and Sundial are the selected later capability representatives. Planned models do not appear in <code><a href="reference/tsfm_models.html">tsfm_models()</a></code> until their metadata and executable support gates are complete.</p>
 <p><code><a href="reference/tsfm_models.html">tsfm_models()</a></code> is package-owned: <code>supported</code> means the checkpoint has passed <code>tsfm</code>’s release gates, not that another package registered a constructor in the current session.</p>
 <div class="section level4">
 <h4 id="horizon-and-effective-context">Horizon and effective context<a class="anchor" aria-label="anchor" href="#horizon-and-effective-context"></a>
