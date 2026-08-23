@@ -18,7 +18,7 @@ the signature function(config, weights) and return a new_tsfm_model()."><!-- mat
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">tsfm</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.0.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0</span>
       </span>
     </div>
 
@@ -100,9 +100,29 @@ errors.</p></dd>
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>Invisibly, the architecture key.</p>
+    <p><code>tsfm_register_arch()</code> invisibly returns the architecture key;
+<code>tsfm_registry_has()</code> returns one logical value; and
+<code>tsfm_registry_archs()</code> returns the registered keys as a character vector.</p>
+    </div>
+    <div id="details">
+    <h2>Details</h2>
+    <p>Registration changes only the current R session's constructor mapping. It
+does not add a checkpoint to <code><a href="tsfm_models.html">tsfm_models()</a></code> or make an arbitrary model ID
+loadable through <code><a href="tsfm_pretrained.html">tsfm_pretrained()</a></code>. The loader consults this registry only
+after resolving a checkpoint from <code>tsfm</code>'s package-owned curated catalogue.
+Architecture authors can use <code><a href="tsfm_check_architecture.html">tsfm_check_architecture()</a></code> independently;
+catalogue inclusion requires the checkpoint's metadata, immutable revision,
+licence, and numerical-parity evidence to be reviewed in <code>tsfm</code>.</p>
     </div>
 
+    <div id="ref-examples">
+    <h2>Examples</h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">tsfm_registry_has</span><span class="op">(</span><span class="st">"timesfm"</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
+<span class="r-in"><span><span class="fu">tsfm_registry_archs</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "stub"    "timesfm" "ttm"    </span>
+</code></pre></div>
+    </div>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top"><h2 data-toc-skip>Contents</h2>

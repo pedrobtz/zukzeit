@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">tsfm</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.0.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0</span>
       </span>
     </div>
 
@@ -67,32 +67,37 @@
     </div>
 
     <div class="section level2">
-<h2 class="page-header" data-toc-text="0.0.0.9000" id="tsfm-0009000">tsfm 0.0.0.9000<a class="anchor" aria-label="anchor" href="#tsfm-0009000"></a></h2>
-<p>Development release establishing native TimesFM inference and the surrounding model-loading and forecasting shell.</p>
-<div class="section level3">
-<h3 id="engine-contract-0-0-0-9000">Engine contract<a class="anchor" aria-label="anchor" href="#engine-contract-0-0-0-9000"></a></h3>
+<h2 class="page-header" data-toc-text="0.1.0" id="tsfm-010">tsfm 0.1.0<a class="anchor" aria-label="anchor" href="#tsfm-010"></a></h2>
+<p>First release establishing native TimesFM inference and the surrounding model-loading and forecasting shell.</p>
+<ul><li>Recorded the Apache-2.0 provenance of the native TimesFM derivative files, preserved Google LLC’s copyright notice, credited the upstream project, and included the complete upstream licence in the installed package.</li>
+<li>Removed the undeclared <code>harus</code> startup integration. Consumer packages can use the documented catalogue, lifecycle, condition, and <code><a href="../reference/TSFM.html">TSFM()</a></code> APIs without creating a reverse dependency from <code>tsfm</code>.</li>
+<li>Documented the structured condition hierarchy and cache-status schema as installed help topics, and made the stub-backed <code><a href="../reference/TSFM.html">TSFM()</a></code> example executable.</li>
+<li>Safetensors readers now close package-owned file connections deterministically after metadata and state-dict reads.</li>
+</ul><div class="section level3">
+<h3 id="engine-contract-0-1-0">Engine contract<a class="anchor" aria-label="anchor" href="#engine-contract-0-1-0"></a></h3>
 <ul><li>
 <code>tsfm</code> is positioned as a framework-neutral <strong>inference engine</strong>: it owns the path from a pretrained checkpoint to predictive quantiles, and interfaces to tidymodels, the tidyverts, and modeltime are optional adapters of equal standing. <code>hardhat</code> moved from <code>Imports</code> to <code>Suggests</code> accordingly.</li>
 <li>
-<code><a href="../reference/tsfm-architecture-contract.html">?`tsfm-architecture-contract`</a></code> documents the public plugin surface, and <code><a href="../reference/tsfm_contract_version.html">tsfm_contract_version()</a></code> versions it. <code><a href="../reference/new_tsfm_model.html">new_tsfm_model()</a></code> stamps every handle.</li>
+<code><a href="../reference/tsfm-architecture-contract.html">?`tsfm-architecture-contract`</a></code> documents the public execution surface, and <code><a href="../reference/tsfm_contract_version.html">tsfm_contract_version()</a></code> versions it. <code><a href="../reference/new_tsfm_model.html">new_tsfm_model()</a></code> stamps every handle.</li>
 <li>
-<code><a href="../reference/tsfm_check_architecture.html">tsfm_check_architecture()</a></code> turns the contract into an executable gate: construction, forecast shape, quantile monotonicity, finiteness, context limits, empty-context handling, and batch/loop agreement. Built-in architectures run it in the test suite; third parties get the same check without reading the engine’s internals. A <code>max_context</code> check the probe is too short to reach now reports not-applicable instead of passing, so the summary never counts an invariant that did not run.</li>
+<code><a href="../reference/tsfm_check_architecture.html">tsfm_check_architecture()</a></code> turns the contract into an executable gate: construction, forecast shape, quantile monotonicity, finiteness, context limits, empty-context handling, and batch/loop agreement. Built-in architectures run it in the test suite; external implementations can use the same check without reading the engine’s internals. A <code>max_context</code> check the probe is too short to reach now reports not-applicable instead of passing, so the summary never counts an invariant that did not run.</li>
 <li>
 <code><a href="https://generics.r-lib.org/reference/forecast.html" class="external-link">forecast()</a></code> is now re-exported from <code>generics</code> rather than defined locally, and <code><a href="https://fabletools.tidyverts.org/reference/as-fable.html" class="external-link">as_fable()</a></code> is registered onto <code>fabletools</code>’s generic from <code>.onLoad()</code> instead of shadowing it. Attaching <code>tsfm</code> alongside fabletools, modeltime, or forecast no longer risks masking either verb. Call <code><a href="https://fabletools.tidyverts.org/reference/as-fable.html" class="external-link">fabletools::as_fable()</a></code>.</li>
 <li>Fixed a latent bug where the parsnip <code><a href="https://generics.r-lib.org/reference/tunable.html" class="external-link">tunable()</a></code> registration called a non-existent <code>rlang::s3_register()</code>; it is <code><a href="https://vctrs.r-lib.org/reference/s3_register.html" class="external-link">vctrs::s3_register()</a></code>, and the failure was silently swallowed by <code>.onLoad()</code>’s <code>tryCatch</code>, so the engine’s tuning support never actually registered. Failures now warn.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="core-0-0-0-9000">Core<a class="anchor" aria-label="anchor" href="#core-0-0-0-9000"></a></h3>
+<h3 id="core-0-1-0">Core<a class="anchor" aria-label="anchor" href="#core-0-1-0"></a></h3>
 <ul><li>Added <code><a href="../reference/tsfm_download.html">tsfm_download()</a></code> for explicit manifest prefetch, <code><a href="../reference/tsfm_cache_status.html">tsfm_cache_status()</a></code> for separate disk/resident state, and <code><a href="../reference/tsfm_unload.html">tsfm_unload()</a></code> for resident eviction without deleting the <code>hfhub</code> cache.</li>
 <li>
 <code><a href="../reference/tsfm_pretrained.html">tsfm_pretrained()</a></code> now keys constructed handles by checkpoint, immutable revision, resolved device, and load-affecting options in an R-session LRU bounded by <code>options(tsfm.max_loaded_models = 1L)</code>. <code>reuse = FALSE</code> bypasses reuse and <code>0L</code> disables resident storage.</li>
 <li>Added safetensors header validation and named R <code>torch</code> state-dict loading, with download and checkpoint failures mapped to their structured policy families.</li>
 <li>Added the offline <code><a href="../reference/tsfm_models.html">tsfm_models()</a></code> checkpoint catalogue. Its safe default returns only supported checkpoints, while <code>state = NULL</code> exposes pinned scaffold records and static cost, capability, manifest-cache, provenance, and weight-licence metadata without network access.</li>
+<li>The checkpoint catalogue is explicitly package-owned and curated. <code><a href="../reference/tsfm_register_arch.html">tsfm_register_arch()</a></code> registers only an in-session constructor; it does not publish model IDs or change what <code><a href="../reference/tsfm_models.html">tsfm_models()</a></code> reports.</li>
 <li>Added a structured condition hierarchy rooted at <code>tsfm_error</code>, with one recoverable, external, or internal policy parent and structured fields on capability, context, quantile, device, download, checkpoint, and contract failures.</li>
 <li>Contract v1 now records explicit trained quantile levels and a maximum horizon, rejects unsupported probabilities before inference, and refuses capability declarations for multivariate/covariate/sample/fine-tuning channels that do not yet exist.</li>
 <li>The batch boundary validates contexts, horizons, quantile levels, batch size, and architecture return shape/finiteness/monotonicity before assembling a forecast.</li>
 <li>
-<code><a href="../reference/tsfm_pretrained.html">tsfm_pretrained()</a></code> loads the self-contained <code>stub</code> fixture and pinned native TimesFM checkpoints through an open architecture registry (<code><a href="../reference/tsfm_register_arch.html">tsfm_register_arch()</a></code>).</li>
+<code><a href="../reference/tsfm_pretrained.html">tsfm_pretrained()</a></code> loads the self-contained <code>stub</code> fixture and pinned native TimesFM checkpoints through the constructor registered for each curated catalogue entry.</li>
 <li>
 <code><a href="../reference/tsfm_capabilities.html">tsfm_capabilities()</a></code> reports per-model capability metadata, with pre-flight validation that rejects unsupported requests before inference.</li>
 <li>
@@ -106,7 +111,7 @@
 <li>Batched panel inference (<code><a href="../reference/tsfm_run_batches.html">tsfm_run_batches()</a></code>) with device resolution and validation across CPU/CUDA/MPS (<code><a href="../reference/tsfm_resolve_device.html">tsfm_resolve_device()</a></code>, <code><a href="../reference/tsfm_set_device.html">tsfm_set_device()</a></code>).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="tidymodels-0-0-0-9000">tidymodels<a class="anchor" aria-label="anchor" href="#tidymodels-0-0-0-9000"></a></h3>
+<h3 id="tidymodels-0-1-0">tidymodels<a class="anchor" aria-label="anchor" href="#tidymodels-0-1-0"></a></h3>
 <ul><li>
 <code><a href="../reference/tsfm_reg.html">tsfm_reg()</a></code> parsnip specification and <code>"tsfm"</code> engine, with an exported fit bridge exercised end to end against the stub.</li>
 <li>
@@ -115,7 +120,7 @@
 <code><a href="../reference/tsfm_reg.html">tsfm_reg()</a></code> and <code><a href="../reference/context_length.html">context_length()</a></code> check for <code>parsnip</code> and <code>dials</code> up front, so a core installation gets the same typed <code>tsfm_error_capability</code> as every other optional-dependency path instead of a bare “no package called” error.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="models-0-0-0-9000">Models<a class="anchor" aria-label="anchor" href="#models-0-0-0-9000"></a></h3>
+<h3 id="models-0-1-0">Models<a class="anchor" aria-label="anchor" href="#models-0-1-0"></a></h3>
 <ul><li><p><strong>TimesFM 2.5</strong> is the first supported native model. The R <code>torch</code> port owns patch tokenization, cumulative reversible normalization, 20 causal rotary transformer layers, cached autoregressive decoding, the continuous quantile head, flip invariance, positivity inference, and quantile-crossing repair.</p></li>
 <li><p>The complete 232-tensor safetensors state dict maps directly onto meta-device module placeholders, avoiding a retained second CPU copy during construction. Modules run in evaluation mode under disabled gradients.</p></li>
 <li><p>Single-series and vectorized batch inference pass every pinned CPU golden fixture, including exact short-context, 16,256-value truncation, and batch/loop cases. Repeated calls are identical and silent.</p></li>

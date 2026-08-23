@@ -12,7 +12,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
 <!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- pkgdown --><link href="pkgdown.css" rel="stylesheet">
 <script src="pkgdown.js"></script><meta property="og:title" content="Native Time-Series Foundation Models for R">
-<meta property="og:description" content="An inference engine under development for running open time-series foundation models natively in R. It provides a from_pretrained()-style loader with an open architecture registry, a versioned execution contract and conformance harness, explicit capability metadata, batched panel inference with device resolution, and a standard forecast object backed by distributional. The first supported native architecture is TimesFM 2.5, loaded from an immutable checkpoint and verified against pinned reference outputs. The engine is framework-neutral, with optional adapters for tidymodels (via hardhat and parsnip) and the tidyverts (via fabletools).">
+<meta property="og:description" content="Runs open time-series foundation models natively in R. It provides a pretrained-checkpoint loader backed by a curated catalogue and an architecture constructor registry, a versioned execution contract and conformance harness, explicit capability metadata, batched panel inference with device resolution, and a standard forecast object backed by distributional. The first supported native architecture is TimesFM 2.5, loaded from an immutable checkpoint and verified against pinned reference outputs; see Das et al. (2024) &lt;doi:10.48550/arXiv.2310.10688&gt;. The engine is framework-neutral, with optional adapters for tidymodels (via hardhat and parsnip) and the tidyverts ecosystem (via fabletools).">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
 <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="index.html">tsfm</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.0.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0</span>
       </span>
     </div>
 
@@ -93,7 +93,7 @@
 
 <p><strong>An inference engine for time-series foundation models, natively in R.</strong></p>
 <p>The target is simple: given a supported pretrained checkpoint and a numeric context, <code>tsfm</code> produces predictive quantiles.</p>
-<p>R already has every layer a foundation-model forecasting stack needs — Hub access (<code>hfhub</code>), checkpoint format (<code>safetensors</code>), tensor runtime (<code>torch</code>), temporal structures (<code>tsibble</code>), forecast distributions (<code>distributional</code>), backtesting (<code>rsample</code>), reconciliation and metrics (<code>fabletools</code>), and conformal calibration (<code>conformalForecast</code>). What it lacks is the <strong>model layer</strong>: a catalogue of natively implemented time-series foundation models (TSFMs) behind one capability-aware interface. <code>tsfm</code> is building that layer:</p>
+<p>R already has every layer a foundation-model forecasting stack needs — Hub access (<code>hfhub</code>), checkpoint format (<code>safetensors</code>), tensor runtime (<code>torch</code>), temporal structures (<code>tsibble</code>), forecast distributions (<code>distributional</code>), backtesting (<code>rsample</code>), reconciliation and metrics (<code>fabletools</code>), and conformal calibration (<code>conformalForecast</code>). What it lacks is the <strong>model layer</strong>: a catalogue of natively implemented time-series foundation models (TSFMs) behind one capability-aware interface. <code>tsfm</code> provides that layer:</p>
 <ul>
 <li>
 <strong>One loader.</strong> <code>tsfm_pretrained("...")</code> resolves a supported model into a uniform handle. TimesFM 2.5 is the first supported native architecture; the weight-free <code>stub</code> remains the fast engine test fixture.</li>
@@ -155,7 +155,10 @@
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># development version</span></span>
+<code class="sourceCode R"><span><span class="co"># After the CRAN release:</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"tsfm"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Development version:</span></span>
 <span><span class="co"># install.packages("pak")</span></span>
 <span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"pedrobtz/tsfm"</span><span class="op">)</span></span></code></pre></div>
 <p>The pinned TimesFM checkpoint is about 925 MB. It is downloaded once through <code>hfhub</code>, loaded into native R <code>torch</code>, and reused from a bounded in-session handle cache. Use <code><a href="reference/tsfm_download.html">tsfm_download()</a></code> to prefetch it explicitly.</p>
@@ -183,15 +186,16 @@
 <span><span class="va">fc</span> <span class="op">|&gt;</span> <span class="fu">fabletools</span><span class="fu">::</span><span class="fu"><a href="https://fabletools.tidyverts.org/reference/as-fable.html" class="external-link">as_fable</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Or compose the model inside a mable, next to any other tidyverts model.</span></span>
-<span><span class="va">fits</span> <span class="op">&lt;-</span> <span class="fu">fabletools</span><span class="fu">::</span><span class="fu"><a href="https://fabletools.tidyverts.org/reference/model.html" class="external-link">model</a></span><span class="op">(</span><span class="va">tsibble_panel</span>, tsfm <span class="op">=</span> <span class="fu"><a href="reference/TSFM.html">TSFM</a></span><span class="op">(</span><span class="va">value</span>, model_id <span class="op">=</span> <span class="st">"stub"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">history_ts</span> <span class="op">&lt;-</span> <span class="fu">tsibble</span><span class="fu">::</span><span class="fu"><a href="https://tsibble.tidyverts.org/reference/as-tsibble.html" class="external-link">as_tsibble</a></span><span class="op">(</span><span class="va">history</span>, index <span class="op">=</span> <span class="va">time</span><span class="op">)</span></span>
+<span><span class="va">fits</span> <span class="op">&lt;-</span> <span class="fu">fabletools</span><span class="fu">::</span><span class="fu"><a href="https://fabletools.tidyverts.org/reference/model.html" class="external-link">model</a></span><span class="op">(</span><span class="va">history_ts</span>, tsfm <span class="op">=</span> <span class="fu"><a href="reference/TSFM.html">TSFM</a></span><span class="op">(</span><span class="va">value</span>, model_id <span class="op">=</span> <span class="st">"stub"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu">fabletools</span><span class="fu">::</span><span class="fu"><a href="https://generics.r-lib.org/reference/forecast.html" class="external-link">forecast</a></span><span class="op">(</span><span class="va">fits</span>, h <span class="op">=</span> <span class="fl">6</span><span class="op">)</span></span></code></pre></div>
 <p>Swap <code>"stub"</code> for <code>"google/timesfm-2.5-200m-pytorch"</code> and the same code runs the real checkpoint.</p>
 <p>Vignettes: <code><a href="articles/timesfm-zero-shot.html">vignette("timesfm-zero-shot")</a></code> walks the whole public surface on a real checkpoint; <code><a href="articles/electricity-demand.html">vignette("electricity-demand")</a></code> scores it against seasonal naive, ETS, and ARIMA on held-out data; <code><a href="articles/zero-shot-workflow.html">vignette("zero-shot-workflow")</a></code> and <code><a href="articles/rolling-origin-tuning.html">vignette("rolling-origin-tuning")</a></code> cover the engine and tuning with the stub.</p>
 </div>
 <div class="section level2">
-<h2 id="adding-an-architecture">Adding an architecture<a class="anchor" aria-label="anchor" href="#adding-an-architecture"></a>
+<h2 id="developing-an-architecture">Developing an architecture<a class="anchor" aria-label="anchor" href="#developing-an-architecture"></a>
 </h2>
-<p>Third parties extend the catalogue without forking. Implement the contract, verify it, register it:</p>
+<p>Architecture authors can implement and verify the public execution contract:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">my_arch</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">config</span>, <span class="va">weights</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="reference/new_tsfm_model.html">new_tsfm_model</a></span><span class="op">(</span></span>
@@ -204,8 +208,8 @@
 <span>  <span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="fu"><a href="reference/tsfm_check_architecture.html">tsfm_check_architecture</a></span><span class="op">(</span><span class="va">my_arch</span><span class="op">)</span>          <span class="co"># contract conformance gate</span></span>
-<span><span class="fu"><a href="reference/tsfm_register_arch.html">tsfm_register_arch</a></span><span class="op">(</span><span class="st">"my-arch"</span>, <span class="va">my_arch</span><span class="op">)</span>    <span class="co"># from your own .onLoad()</span></span></code></pre></div>
+<span><span class="fu"><a href="reference/tsfm_check_architecture.html">tsfm_check_architecture</a></span><span class="op">(</span><span class="va">my_arch</span><span class="op">)</span>          <span class="co"># contract conformance gate</span></span></code></pre></div>
+<p>The checkpoint catalogue is owned and curated by <code>tsfm</code>. Registering a constructor with <code><a href="reference/tsfm_register_arch.html">tsfm_register_arch()</a></code> changes only the current session’s architecture mapping; it does not add a row to <code><a href="reference/tsfm_models.html">tsfm_models()</a></code> or make an arbitrary model ID loadable through <code><a href="reference/tsfm_pretrained.html">tsfm_pretrained()</a></code>, <code><a href="reference/TSFM.html">TSFM()</a></code>, or parsnip. Catalogue inclusion requires an immutable checkpoint revision, manifest, licence metadata, contract conformance, and committed numerical-parity evidence to be reviewed in this repository. Independently constructed <code>tsfm_model</code> handles can use the plain <code><a href="https://generics.r-lib.org/reference/forecast.html" class="external-link">forecast()</a></code> path without catalogue registration.</p>
 </div>
 <div class="section level2">
 <h2 id="model-catalogue">Model catalogue<a class="anchor" aria-label="anchor" href="#model-catalogue"></a>
@@ -249,7 +253,7 @@
 </tbody>
 </table>
 <p>TimesFM is marked supported because it passes both the architecture conformance gate and every committed numerical-parity fixture against the pinned official implementation.</p>
-<p>Third parties can register additional architectures with <code><a href="reference/tsfm_register_arch.html">tsfm_register_arch()</a></code> — no fork required.</p>
+<p><code><a href="reference/tsfm_models.html">tsfm_models()</a></code> is package-owned: <code>supported</code> means the checkpoint has passed <code>tsfm</code>’s release gates, not that another package registered a constructor in the current session.</p>
 <div class="section level4">
 <h4 id="horizon-and-effective-context">Horizon and effective context<a class="anchor" aria-label="anchor" href="#horizon-and-effective-context"></a>
 </h4>
@@ -281,7 +285,7 @@
 </h3>
 <p>The TimesFM feasibility work is pinned to official source commit <code>3dae50b20d7a724981e8ea36cda75578f80dd2dc</code> and checkpoint revision <code>1d952420fba87f3c6dee4f240de0f1a0fbc790e3</code>. The catalogue never resolves a moving <code>main</code> branch for curated support metadata.</p>
 <p><code>cached</code> means every file in the checkpoint’s static manifest is already in the cache managed by <code>hfhub</code>. Probes always set <code>local_files_only = TRUE</code>. <code>hfhub</code> uses <code>HUGGINGFACE_HUB_CACHE</code> when set and otherwise defaults to <code>~/.cache/huggingface/hub</code>; <code>tsfm</code> does not create a second disk cache. A known incomplete manifest is <code>FALSE</code>, while <code>NA</code> means the catalogue entry has no manifest definition yet.</p>
-<p><code>size_bytes</code> is a static first-download estimate exposed before loading. The pinned TimesFM <code>model.safetensors</code> is 925,181,104 bytes (about 925 MB, or 882 MiB), excluding small metadata files and live tensor/runtime overhead. The catalogue’s <code>license</code> column is the upstream <strong>weight</strong> licence—Apache-2.0 for the current curated records—not the package’s MIT licence. <code>tsfm</code> reports the upstream terms and never accepts gated-repository terms on a user’s behalf.</p>
+<p><code>size_bytes</code> is a static first-download estimate exposed before loading. The pinned TimesFM <code>model.safetensors</code> is 925,181,104 bytes (about 925 MB, or 882 MiB), excluding small metadata files and live tensor/runtime overhead. The catalogue’s <code>license</code> column is the upstream <strong>weight</strong> licence—Apache-2.0 for the current curated records. The original <code>tsfm</code> code is MIT licensed; the native TimesFM files identified in <code>inst/COPYRIGHTS</code> are modified derivative works under Apache-2.0 and retain Google LLC’s copyright notice. The complete Apache licence is installed with the package. <code>tsfm</code> reports upstream weight terms and never accepts gated-repository terms on a user’s behalf.</p>
 </div>
 <div class="section level3">
 <h3 id="download-and-constructed-handle-lifecycle">Download and constructed-handle lifecycle<a class="anchor" aria-label="anchor" href="#download-and-constructed-handle-lifecycle"></a>
@@ -319,7 +323,7 @@
 </h2>
 <p><code>tsfm</code> owns the model layer and thin adapters only. Backtesting, metrics, reconciliation, conformal calibration, tuning, and feature engineering are delegated to the existing R stack.</p>
 <p>Explicitly <strong>out of scope</strong>: hosted-API models (<code>nixtlar</code> covers TimeGPT), training from scratch, and distributed execution. <code>tsfm</code> runs open weights locally; anything served over a network belongs to its own client.</p>
-<p>See <a href=".agents/roadmap.html"><code>.agents/roadmap.md</code></a> for the staged plan and <a href=".agents/plan.html"><code>.agents/plan.md</code></a> for the full gap analysis.</p>
+<p>See the <a href="https://github.com/pedrobtz/tsfm/blob/main/.agents/roadmap.md" class="external-link">release roadmap</a> and <a href="https://github.com/pedrobtz/tsfm/blob/main/.agents/plan.md" class="external-link">implementation plan</a> for the staged plan and full gap analysis.</p>
 </div>
 </div>
   </div>
@@ -354,6 +358,7 @@
 <h2 data-toc-skip>Developers</h2>
 <ul class="list-unstyled">
 <li>Pedro Botz <br><small class="roles"> Author, maintainer </small>   </li>
+<li><a href="authors.html">More about authors...</a></li>
 </ul>
 </div>
 
