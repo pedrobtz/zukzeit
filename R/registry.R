@@ -1,7 +1,8 @@
 # The architecture registry maps an architecture key (as found in a
 # checkpoint's config.json) to a constructor that turns a parsed config plus a
-# weight state-dict into a `tsfm_model`. Third parties can register additional
-# architectures without modifying this package, which keeps the catalogue open.
+# weight state-dict into a `tsfm_model`. It is deliberately separate from the
+# package-owned checkpoint catalogue: registering a constructor never adds a
+# model ID or changes its support state.
 
 .tsfm_registry <- new.env(parent = emptyenv())
 
@@ -10,12 +11,25 @@
 #' Associates an architecture key with a constructor. The constructor must have
 #' the signature `function(config, weights)` and return a [new_tsfm_model()].
 #'
+#' Registration changes only the current R session's constructor mapping. It
+#' does not add a checkpoint to [tsfm_models()] or make an arbitrary model ID
+#' loadable through [tsfm_pretrained()]. The loader consults this registry only
+#' after resolving a checkpoint from `tsfm`'s package-owned curated catalogue.
+#' Architecture authors can use [tsfm_check_architecture()] independently;
+#' catalogue inclusion requires the checkpoint's metadata, immutable revision,
+#' licence, and numerical-parity evidence to be reviewed in `tsfm`.
+#'
 #' @param architecture Character scalar key (matched against `config.json`).
 #' @param constructor A function `function(config, weights)`.
 #' @param overwrite Logical; if `FALSE` (default) re-registering an existing key
 #'   errors.
-#' @return Invisibly, the architecture key.
+#' @return `tsfm_register_arch()` invisibly returns the architecture key;
+#'   `tsfm_registry_has()` returns one logical value; and
+#'   `tsfm_registry_archs()` returns the registered keys as a character vector.
 #' @export
+#' @examples
+#' tsfm_registry_has("timesfm")
+#' tsfm_registry_archs()
 tsfm_register_arch <- function(architecture, constructor, overwrite = FALSE) {
   architecture <- as.character(architecture)
   if (length(architecture) != 1L || is.na(architecture) || !nzchar(architecture)) {

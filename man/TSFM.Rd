@@ -66,11 +66,12 @@ median(fc$value)   # the engine's point forecast
 }
 
 \examples{
-\dontrun{
-library(fabletools)
-fits <- model(tourism_ts, tsfm = TSFM(Trips, model_id = "stub"))
-forecast(fits, h = 12)
-}
+\dontshow{if (requireNamespace("fabletools", quietly = TRUE) && requireNamespace("tsibble", quietly = TRUE)) withAutoprint(\{ # examplesIf}
+history <- tsibble::tsibble(time = 1:12, value = cumsum(1:12), index = time)
+fits <- fabletools::model(history, tsfm = TSFM(value, model_id = "stub"))
+fabletools::forecast(fits, h = 3)
+tsfm_unload("stub")
+\dontshow{\}) # examplesIf}
 }
 \seealso{
 \code{\link[=forecast.tsfm_model]{forecast.tsfm_model()}} for the batched panel route.

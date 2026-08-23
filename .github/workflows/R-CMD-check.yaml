@@ -105,7 +105,7 @@ jobs:
       # the checkpoint invalidates the cache by construction rather than by
       # someone remembering to clear it.
       - name: Cache the pinned checkpoint
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/huggingface
           key: hf-timesfm-1d952420fba87f3c6dee4f240de0f1a0fbc790e3

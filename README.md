@@ -15,7 +15,7 @@ temporal structures (`tsibble`), forecast distributions (`distributional`),
 backtesting (`rsample`), reconciliation and metrics (`fabletools`), and conformal
 calibration (`conformalForecast`). What it lacks is the **model layer**: a
 catalogue of natively implemented time-series foundation models (TSFMs) behind
-one capability-aware interface. `tsfm` is building that layer:
+one capability-aware interface. `tsfm` provides that layer:
 
 - **One loader.** `tsfm_pretrained("...")` resolves a supported model into a
   uniform handle. TimesFM 2.5 is the first supported native architecture; the
@@ -63,7 +63,10 @@ onto `fabletools`, so attaching `tsfm` alongside them never masks the verbs.
 ## Installation
 
 ```r
-# development version
+# After the CRAN release:
+install.packages("tsfm")
+
+# Development version:
 # install.packages("pak")
 pak::pak("pedrobtz/tsfm")
 ```
@@ -94,7 +97,8 @@ as.data.frame(fc)
 fc |> fabletools::as_fable()
 
 # Or compose the model inside a mable, next to any other tidyverts model.
-fits <- fabletools::model(tsibble_panel, tsfm = TSFM(value, model_id = "stub"))
+history_ts <- tsibble::as_tsibble(history, index = time)
+fits <- fabletools::model(history_ts, tsfm = TSFM(value, model_id = "stub"))
 fabletools::forecast(fits, h = 6)
 ```
 
@@ -106,10 +110,9 @@ real checkpoint; `vignette("electricity-demand")` scores it against seasonal
 naive, ETS, and ARIMA on held-out data; `vignette("zero-shot-workflow")` and
 `vignette("rolling-origin-tuning")` cover the engine and tuning with the stub.
 
-## Adding an architecture
+## Developing an architecture
 
-Third parties extend the catalogue without forking. Implement the contract,
-verify it, register it:
+Architecture authors can implement and verify the public execution contract:
 
 ```r
 my_arch <- function(config, weights) {
@@ -124,8 +127,16 @@ my_arch <- function(config, weights) {
 }
 
 tsfm_check_architecture(my_arch)          # contract conformance gate
-tsfm_register_arch("my-arch", my_arch)    # from your own .onLoad()
 ```
+
+The checkpoint catalogue is owned and curated by `tsfm`. Registering a
+constructor with `tsfm_register_arch()` changes only the current session's
+architecture mapping; it does not add a row to `tsfm_models()` or make an
+arbitrary model ID loadable through `tsfm_pretrained()`, `TSFM()`, or parsnip.
+Catalogue inclusion requires an immutable checkpoint revision, manifest,
+licence metadata, contract conformance, and committed numerical-parity evidence
+to be reviewed in this repository. Independently constructed `tsfm_model`
+handles can use the plain `forecast()` path without catalogue registration.
 
 ## Model catalogue
 
@@ -146,8 +157,9 @@ TimesFM is marked supported because it passes both the architecture conformance
 gate and every committed numerical-parity fixture against the pinned official
 implementation.
 
-Third parties can register additional architectures with
-`tsfm_register_arch()` — no fork required.
+`tsfm_models()` is package-owned: `supported` means the checkpoint has passed
+`tsfm`'s release gates, not that another package registered a constructor in the
+current session.
 
 #### Horizon and effective context
 
@@ -183,8 +195,11 @@ manifest definition yet.
 pinned TimesFM `model.safetensors` is 925,181,104 bytes (about 925 MB, or 882
 MiB), excluding small metadata files and live tensor/runtime overhead. The
 catalogue's `license` column is the upstream **weight** licence—Apache-2.0 for
-the current curated records—not the package's MIT licence. `tsfm` reports
-the upstream terms and never accepts gated-repository terms on a user's behalf.
+the current curated records. The original `tsfm` code is MIT licensed; the
+native TimesFM files identified in `inst/COPYRIGHTS` are modified derivative
+works under Apache-2.0 and retain Google LLC's copyright notice. The complete
+Apache licence is installed with the package. `tsfm` reports upstream weight
+terms and never accepts gated-repository terms on a user's behalf.
 
 ### Download and constructed-handle lifecycle
 
@@ -239,6 +254,6 @@ Explicitly **out of scope**: hosted-API models (`nixtlar` covers TimeGPT),
 training from scratch, and distributed execution. `tsfm` runs open weights
 locally; anything served over a network belongs to its own client.
 
-See [`.agents/roadmap.md`](.agents/roadmap.md) for the staged plan and
-[`.agents/plan.md`](.agents/plan.md) for
-the full gap analysis.
+See the [release roadmap](https://github.com/pedrobtz/tsfm/blob/main/.agents/roadmap.md)
+and [implementation plan](https://github.com/pedrobtz/tsfm/blob/main/.agents/plan.md)
+for the staged plan and full gap analysis.

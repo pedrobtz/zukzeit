@@ -1,8 +1,47 @@
-# Structured engine conditions.
-#
-# Consumers make policy decisions from these classes and fields. Every engine
-# abort has one leaf class, exactly one policy parent, and the shared
-# `tsfm_error` base; messages remain for humans rather than control flow.
+#' Structured tsfm conditions
+#'
+#' Public engine failures inherit from `tsfm_error`, one policy class, and one
+#' leaf class. Consumers should branch on those classes and structured fields,
+#' never on condition messages.
+#'
+#' The policy classes are:
+#'
+#' * `tsfm_error_recoverable`: the request can be changed or another model can
+#'   be selected.
+#' * `tsfm_error_external`: authentication, download, or network state may be
+#'   retried or repaired outside the engine.
+#' * `tsfm_error_internal`: the checkpoint or architecture violates the engine
+#'   contract and should not be retried unchanged.
+#'
+#' @section Leaf classes and fields:
+#' Every condition also has the standard `message` and `call` fields.
+#'
+#' * `tsfm_error_capability`: `model_id`, `revision`, `capability`, `requested`,
+#'   and `supported`.
+#' * `tsfm_error_context_length`: `model_id`, `revision`, `requested`, and
+#'   `supported`.
+#' * `tsfm_error_quantile_levels`: `model_id`, `revision`, `requested`, and
+#'   `supported`.
+#' * `tsfm_error_device`: `requested_device` and `resolved_device`.
+#' * `tsfm_error_download`: `model_id`, `revision`, `file`, and the original
+#'   `parent` condition when available.
+#' * `tsfm_error_checkpoint`: `model_id`, `revision`, `tensor`, `expected`, and
+#'   `actual`.
+#' * `tsfm_error_contract`: `architecture`, `model_id`, `contract`, `expected`,
+#'   and `actual`.
+#'
+#' Fields that do not apply to a particular failure may be `NA` or `NULL`.
+#'
+#' @name tsfm-conditions
+#' @aliases tsfm_error tsfm_error_recoverable tsfm_error_external tsfm_error_internal tsfm_error_capability tsfm_error_context_length tsfm_error_quantile_levels tsfm_error_device tsfm_error_download tsfm_error_checkpoint tsfm_error_contract
+#' @examples
+#' error <- tryCatch(tsfm_models("unknown"), error = identity)
+#' inherits(error, "tsfm_error_recoverable")
+#' error$capability
+NULL
+
+# Consumers make policy decisions from the documented classes and fields.
+# Messages remain for humans rather than control flow.
 
 tsfm_error_policies <- c(
   "tsfm_error_recoverable",

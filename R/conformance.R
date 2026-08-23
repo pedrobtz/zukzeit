@@ -1,9 +1,9 @@
 # Conformance harness for the architecture contract.
 #
-# An engine is only as good as its guarantee to plugin authors. This file turns
-# ?`tsfm-architecture-contract` from prose into an executable gate: every
-# built-in architecture runs it, and third parties get the same check without
-# needing to read the engine's internals or have their code reviewed here.
+# An engine is only as good as its guarantee to architecture authors. This file
+# turns ?`tsfm-architecture-contract` from prose into an executable gate: every
+# built-in architecture runs it, and external implementations can run the same
+# check without needing to read the engine's internals.
 
 # One check outcome. `ok = NA` means the check could not be run (for example a
 # batch check on an architecture that supplies no predict_batch_fn) --- which is

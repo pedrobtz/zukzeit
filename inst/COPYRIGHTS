@@ -1,0 +1,38 @@
+The tsfm package contains original work and a modified derivative of TimesFM.
+
+Original tsfm work
+------------------
+
+Copyright 2026 tsfm authors.
+Licensed under the MIT licence recorded in the package's top-level LICENSE.
+
+Modified TimesFM derivative
+----------------------------
+
+The following files contain a translation and modification of the official
+TimesFM Python/PyTorch implementation into native R/torch:
+
+  R/arch-timesfm.R
+  R/timesfm-feasibility.R
+  R/timesfm-inference.R
+  R/timesfm-module.R
+  R/timesfm-state.R
+
+Original work: TimesFM
+Copyright 2025 Google LLC
+License: Apache License, Version 2.0
+Source: https://github.com/google-research/timesfm
+Pinned source revision: 3dae50b20d7a724981e8ea36cda75578f80dd2dc
+
+The files above were translated from Python/PyTorch to R/torch and modified for
+R tensor conventions, checkpoint loading, engine contracts, device handling,
+batching, and package integration. They carry prominent modification notices.
+The complete Apache License, Version 2.0 is distributed in
+LICENSES/Apache-2.0.txt. The pinned upstream source contains no NOTICE file.
+
+Checkpoint weights
+------------------
+
+Checkpoint weights are not included in this package. When explicitly requested
+by a user they are downloaded from their upstream repository and remain subject
+to the licence reported by tsfm_models(), currently Apache-2.0 for TimesFM 2.5.

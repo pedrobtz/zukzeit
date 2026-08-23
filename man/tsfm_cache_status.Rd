@@ -7,9 +7,23 @@
 tsfm_cache_status()
 }
 \value{
-A data frame separating local manifest availability from constructed
-handles, including resolved device, estimated bytes, and last-use time.
+A data frame with columns:
+\itemize{
+\item \code{model_id}, \code{revision}: character checkpoint identity.
+\item \code{device}: character resolved device, or \code{NA} for a disk-only row.
+\item \code{disk_cached}: logical indicating whether every manifest file is local;
+\code{NA} when no manifest is defined.
+\item \code{resident}: logical indicating whether a constructed handle is loaded.
+\item \code{size_bytes}: numeric static checkpoint-size estimate.
+\item \code{last_used}: \code{POSIXct} cache-access time, or \code{NA} for a disk-only row.
+}
 }
 \description{
-Inspect checkpoint disk and resident-handle cache state
+Returns one row per catalogue checkpoint and resident-device combination. A
+checkpoint without a resident handle has one disk-only row.
+}
+\examples{
+model <- tsfm_pretrained("stub")
+tsfm_cache_status()
+tsfm_unload("stub")
 }

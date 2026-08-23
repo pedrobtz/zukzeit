@@ -1,3 +1,8 @@
+# Portions derived from TimesFM, Copyright 2025 Google LLC.
+# Translated and modified for R/torch by the tsfm authors.
+# Licensed under Apache-2.0; see inst/COPYRIGHTS and
+# inst/LICENSES/Apache-2.0.txt.
+
 # Native R torch layers for the pinned TimesFM 2.5 200M checkpoint.
 
 timesfm_meta_parameter <- function(shape) {

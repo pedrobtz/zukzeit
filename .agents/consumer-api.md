@@ -9,7 +9,7 @@ The same contract supports benchmark runners, unattended jobs, and model
 selection systems. It is therefore ordinary programmatic API, not an
 agent-specific layer.
 
-*Last reviewed: 2026-08-13.*
+*Last reviewed: 2026-08-23.*
 
 ---
 
@@ -39,6 +39,11 @@ tsfm_models(state = NULL) # include experimental and scaffold entries
 Its default is safe for user-facing selection: only checkpoints that have
 passed conformance and numerical-parity gates are returned. It performs no
 network requests and does not construct a model.
+
+The catalogue is package-owned and release-curated. Runtime calls to
+`tsfm_register_arch()` do not add rows or change support states. Consequently,
+`state = "supported"` always means certified by `tsfm`, and `tsai` discovery is
+independent of which extension packages happen to be installed or loaded.
 
 Required columns are:
 
@@ -182,3 +187,8 @@ per key. Callers that prioritize throughput should use the first path.
 and framework adapters. A consumer such as `tsai` owns model selection,
 fallback policy, backtesting, metrics, ensembles, prompts, and tool schemas.
 No LLM, agent, or `tsai` dependency belongs in `tsfm`.
+
+In `0.1.0`, `tsai` selects only from the package-owned catalogue. External
+architecture constructors and manually created handles are not injected into
+consumer discovery. Adding third-party checkpoint discovery would require a
+future consumer-contract revision with explicit provenance and trust semantics.

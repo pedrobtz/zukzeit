@@ -1,3 +1,8 @@
+# Portions derived from TimesFM, Copyright 2025 Google LLC.
+# Translated and modified for R/torch by the tsfm authors.
+# Licensed under Apache-2.0; see inst/COPYRIGHTS and
+# inst/LICENSES/Apache-2.0.txt.
+
 # Native TimesFM 2.5 architecture entry point.
 
 timesfm_config_value <- function(config, name, default) {

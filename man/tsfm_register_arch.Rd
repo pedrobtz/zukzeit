@@ -21,9 +21,24 @@ tsfm_registry_archs()
 errors.}
 }
 \value{
-Invisibly, the architecture key.
+\code{tsfm_register_arch()} invisibly returns the architecture key;
+\code{tsfm_registry_has()} returns one logical value; and
+\code{tsfm_registry_archs()} returns the registered keys as a character vector.
 }
 \description{
 Associates an architecture key with a constructor. The constructor must have
 the signature \verb{function(config, weights)} and return a \code{\link[=new_tsfm_model]{new_tsfm_model()}}.
+}
+\details{
+Registration changes only the current R session's constructor mapping. It
+does not add a checkpoint to \code{\link[=tsfm_models]{tsfm_models()}} or make an arbitrary model ID
+loadable through \code{\link[=tsfm_pretrained]{tsfm_pretrained()}}. The loader consults this registry only
+after resolving a checkpoint from \code{tsfm}'s package-owned curated catalogue.
+Architecture authors can use \code{\link[=tsfm_check_architecture]{tsfm_check_architecture()}} independently;
+catalogue inclusion requires the checkpoint's metadata, immutable revision,
+licence, and numerical-parity evidence to be reviewed in \code{tsfm}.
+}
+\examples{
+tsfm_registry_has("timesfm")
+tsfm_registry_archs()
 }

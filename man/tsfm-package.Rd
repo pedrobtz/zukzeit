@@ -6,7 +6,7 @@
 \alias{tsfm-package}
 \title{tsfm: Native Time-Series Foundation Models for R}
 \description{
-An inference engine under development for running open time-series foundation models natively in R. It provides a 'from_pretrained()'-style loader with an open architecture registry, a versioned execution contract and conformance harness, explicit capability metadata, batched panel inference with device resolution, and a standard forecast object backed by 'distributional'. The first supported native architecture is TimesFM 2.5, loaded from an immutable checkpoint and verified against pinned reference outputs. The engine is framework-neutral, with optional adapters for 'tidymodels' (via 'hardhat' and 'parsnip') and the tidyverts (via 'fabletools').
+Runs open time-series foundation models natively in R. It provides a pretrained-checkpoint loader backed by a curated catalogue and an architecture constructor registry, a versioned execution contract and conformance harness, explicit capability metadata, batched panel inference with device resolution, and a standard forecast object backed by 'distributional'. The first supported native architecture is TimesFM 2.5, loaded from an immutable checkpoint and verified against pinned reference outputs; see Das et al. (2024) \doi{10.48550/arXiv.2310.10688}. The engine is framework-neutral, with optional adapters for 'tidymodels' (via 'hardhat' and 'parsnip') and the tidyverts ecosystem (via 'fabletools').
 }
 \seealso{
 Useful links:
@@ -22,6 +22,11 @@ Useful links:
 Authors:
 \itemize{
   \item Pedro Botz \email{pedrobtz@gmail.com}
+}
+
+Other contributors:
+\itemize{
+  \item Google LLC (TimesFM reference implementation) [copyright holder, contributor]
 }
 
 }

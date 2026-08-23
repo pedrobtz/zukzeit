@@ -173,6 +173,24 @@ test_that("explicit prefetch downloads the manifest without construction", {
   expect_identical(ls(envir = tsfm:::.tsfm_handle_cache), character())
 })
 
+test_that("safetensors readers close their file connections deterministically", {
+  skip_if_no_torch()
+  path <- tempfile(fileext = ".safetensors")
+  safetensors::safe_save_file(list(weight = torch::torch_ones(1)), path)
+  gc()
+  before <- rownames(showConnections())
+  record <- cache_test_record("fixture/a")
+  record$architecture <- "cache-test"
+  record$size_bytes <- unname(file.info(path)$size)
+
+  metadata <- tsfm:::tsfm_read_safetensors_metadata(path, record)
+  state <- tsfm:::tsfm_load_state_dict(path, record, config = list())
+
+  expect_named(metadata, "weight")
+  expect_s3_class(state$weight, "torch_tensor")
+  expect_setequal(rownames(showConnections()), before)
+})
+
 test_that("download failures retain external policy and checkpoint identity", {
   record <- cache_test_record("fixture/a")
   local_mocked_bindings(tsfm_catalogue_records = function() list(record))

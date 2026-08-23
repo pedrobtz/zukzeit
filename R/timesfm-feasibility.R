@@ -1,3 +1,8 @@
+# Portions derived from TimesFM, Copyright 2025 Google LLC.
+# Translated and modified for R/torch by the tsfm authors.
+# Licensed under Apache-2.0; see inst/COPYRIGHTS and
+# inst/LICENSES/Apache-2.0.txt.
+
 # Native R torch feasibility spike for the TimesFM 2.5 operator graph.
 #
 # This is deliberately smaller than the production architecture port. It

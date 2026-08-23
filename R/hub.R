@@ -26,6 +26,10 @@
 #'   cache key and made available through `config$load_options`.
 #' @return A [new_tsfm_model()].
 #' @export
+#' @examples
+#' model <- tsfm_pretrained("stub")
+#' tsfm_capabilities(model)
+#' tsfm_unload("stub")
 tsfm_pretrained <- function(model_id, revision = NULL, device = NULL,
                             reuse = TRUE, ...) {
   if (length(model_id) != 1L || !is.character(model_id) ||

@@ -11,7 +11,8 @@ tsfm_resolve_catalogue_entry <- function(model_id, revision = NULL,
     tsfm_abort_capability(
       c(
         "Checkpoint {.val {model_id}} is not in the curated catalogue.",
-        "i" = "Use {.fn tsfm_models} to inspect known checkpoint IDs."
+        "i" = "Use {.fn tsfm_models} to inspect known checkpoint IDs.",
+        "i" = "Architecture registration does not add checkpoint entries."
       ),
       model_id = model_id,
       revision = revision %||% NA_character_,
@@ -150,9 +151,14 @@ tsfm_read_safetensors_metadata <- function(path, record = NULL) {
       actual = path
     )
   }
+  connection <- NULL
+  on.exit({
+    if (!is.null(connection) && isOpen(connection)) close(connection)
+  }, add = TRUE)
   tryCatch(
     {
-      reader <- safetensors::safetensors$new(path, framework = "torch")
+      connection <- file(path, open = "rb")
+      reader <- safetensors::safetensors$new(connection, framework = "torch")
       reader$metadata
     },
     error = function(e) {
@@ -178,8 +184,15 @@ tsfm_load_state_dict <- function(path, record, config) {
       metadata, config, record$model_id, record$revision
     )
   }
+  connection <- NULL
+  on.exit({
+    if (!is.null(connection) && isOpen(connection)) close(connection)
+  }, add = TRUE)
   state <- tryCatch(
-    safetensors::safe_load_file(path, framework = "torch"),
+    {
+      connection <- file(path, open = "rb")
+      safetensors::safe_load_file(connection, framework = "torch")
+    },
     error = function(e) {
       tsfm_abort_checkpoint(
         c(
@@ -302,9 +315,23 @@ tsfm_resident_entries <- function() {
 
 #' Inspect checkpoint disk and resident-handle cache state
 #'
-#' @return A data frame separating local manifest availability from constructed
-#'   handles, including resolved device, estimated bytes, and last-use time.
+#' Returns one row per catalogue checkpoint and resident-device combination. A
+#' checkpoint without a resident handle has one disk-only row.
+#'
+#' @return A data frame with columns:
+#'
+#' * `model_id`, `revision`: character checkpoint identity.
+#' * `device`: character resolved device, or `NA` for a disk-only row.
+#' * `disk_cached`: logical indicating whether every manifest file is local;
+#'   `NA` when no manifest is defined.
+#' * `resident`: logical indicating whether a constructed handle is loaded.
+#' * `size_bytes`: numeric static checkpoint-size estimate.
+#' * `last_used`: `POSIXct` cache-access time, or `NA` for a disk-only row.
 #' @export
+#' @examples
+#' model <- tsfm_pretrained("stub")
+#' tsfm_cache_status()
+#' tsfm_unload("stub")
 tsfm_cache_status <- function() {
   records <- tsfm_catalogue_records()
   entries <- tsfm_resident_entries()

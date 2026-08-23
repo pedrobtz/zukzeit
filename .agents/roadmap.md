@@ -11,7 +11,7 @@ This roadmap is release-driven. It defines exactly what `0.1.0` means, the
 ordered stages required to reach it, and the work deliberately deferred until
 after it.
 
-*Last reviewed: 2026-08-14.*
+*Last reviewed: 2026-08-23.*
 
 ---
 
@@ -20,7 +20,10 @@ after it.
 The engine runs the pinned TimesFM 2.5 checkpoint natively, passes its
 architecture-conformance and numerical-parity gates, and serves all four
 required user workflows. GitHub Actions is green on `main` across five
-configurations. Release hardening is the remaining gate.
+configurations at the last fully green baseline. The latest published matrix
+predates the local removal of an undeclared optional integration and is red;
+its dedicated checkpoint-backed numerical-parity job passed. A fresh remote
+run of the release candidate is part of the remaining release hardening.
 
 | Architecture | Current state | `0.1.0` role |
 |---|---|---|
@@ -31,7 +34,8 @@ configurations. Release hardening is the remaining gate.
 
 The repository already contains useful foundations:
 
-- an open architecture registry and Hub configuration resolver;
+- an architecture constructor registry behind a package-owned curated
+  checkpoint catalogue and Hub configuration resolver;
 - capability metadata and pre-flight checks;
 - a versioned architecture contract and executable conformance harness;
 - panel batching, context truncation, and CPU/CUDA/MPS device resolution;
@@ -45,10 +49,9 @@ The important remaining gaps are:
 - TTM has no weight map, module, or forward pass and remains outside `0.1.0`;
 - the current contract cannot carry covariates, multivariate targets, or sample
   paths; these capability records correctly remain `FALSE`;
-- CI proves the deterministic suite on five configurations and the native torch
-  paths on one, but the numerical-parity gate needs the 925 MB checkpoint and is
-  opt-in; a cached-checkpoint CI job is staged and not yet observed green;
-- release mechanics remain: version, release notes, and tag.
+- the checkpoint-backed numerical-parity CI job is green, while the ordinary
+  five-platform matrix must be rerun after the local dependency cleanup;
+- release mechanics remain: remote release-candidate validation and tag.
 
 These gaps determine the stages below.
 
@@ -301,12 +304,12 @@ when its exit gate is executable and green.
 
 | Stage | Outcome | Status |
 |---|---|---|
-| 0 | Establish an honest, reproducible baseline | **Complete; CI green** |
-| 1 | Prove TimesFM feasibility; freeze catalogue and error contracts | **Complete; CI green** |
-| 2 | Build the reference, loader, download API, and handle LRU | **Complete; CI green** |
-| 3 | Implement safe native TimesFM inference | **Complete; CI green** |
-| 4 | Prove all four user-facing workflows | **Complete; CI green** |
-| 5 | Validate consumer compatibility and release `0.1.0` | **Hardening complete; release mechanics pending** |
+| 0 | Establish an honest, reproducible baseline | **Implementation complete** |
+| 1 | Prove TimesFM feasibility; freeze catalogue and error contracts | **Implementation complete** |
+| 2 | Build the reference, loader, download API, and handle LRU | **Implementation complete** |
+| 3 | Implement safe native TimesFM inference | **Implementation complete** |
+| 4 | Prove all four user-facing workflows | **Implementation complete** |
+| 5 | Validate consumer compatibility and release `0.1.0` | **Hardening; remote rerun pending** |
 
 ### Stage 0 — Honest baseline
 
@@ -703,11 +706,16 @@ Local close-out on 2026-08-14, release mechanics excepted:
   structured errors, cache lifecycle, deterministic inference, interrupt
   cleanup, and the stub-backed `TSFM()` workflow.
 
-Remaining before the tag: observe the cached-checkpoint CI job green so the
-numerical-parity gate runs remotely rather than only locally, then set
-`Version: 0.1.0`, write release notes, and tag. The version is deliberately
-still `0.0.0.9000` — claiming the release before its own CI gate has been seen
-green would be the exact failure mode this roadmap exists to prevent.
+Current audit on 2026-08-23 supersedes the check and CI status in the dated
+close-out above: local full and dependency-only source checks report 0 errors,
+0 warnings, and two notes (new submission and local HTML Tidy); the latest
+checkpoint-backed parity job is green; and the ordinary remote matrix predates
+the dependency cleanup and must be rerun.
+
+Source-provenance attribution is resolved and the package is now versioned
+`0.1.0`. Remaining before the tag: run the full remote matrix and
+checkpoint-backed parity job on this exact release candidate, record the green
+result, and tag.
 
 ---
 

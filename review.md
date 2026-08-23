@@ -4,6 +4,10 @@
 uncommitted Stage 3 delta. **All findings below were fixed the same day**; see
 [Resolution](#resolution) for what changed and how each fix was verified.*
 
+> This is a historical implementation review, not the current release-status
+> report. See [the roadmap](.agents/roadmap.md) and [CRAN comments](cran-comments.md)
+> for the current check and CI state.
+
 ## Scope and method
 
 This is a static review of every stage the roadmap describes as implemented:

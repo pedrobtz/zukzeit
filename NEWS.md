@@ -1,7 +1,18 @@
-# tsfm 0.0.0.9000
+# tsfm 0.1.0
 
-Development release establishing native TimesFM inference and the surrounding
+First release establishing native TimesFM inference and the surrounding
 model-loading and forecasting shell.
+
+* Recorded the Apache-2.0 provenance of the native TimesFM derivative files,
+  preserved Google LLC's copyright notice, credited the upstream project, and
+  included the complete upstream licence in the installed package.
+* Removed the undeclared `harus` startup integration. Consumer packages can
+  use the documented catalogue, lifecycle, condition, and `TSFM()` APIs without
+  creating a reverse dependency from `tsfm`.
+* Documented the structured condition hierarchy and cache-status schema as
+  installed help topics, and made the stub-backed `TSFM()` example executable.
+* Safetensors readers now close package-owned file connections deterministically
+  after metadata and state-dict reads.
 
 ## Engine contract
 
@@ -9,13 +20,13 @@ model-loading and forecasting shell.
   path from a pretrained checkpoint to predictive quantiles, and interfaces to
   tidymodels, the tidyverts, and modeltime are optional adapters of equal
   standing. `hardhat` moved from `Imports` to `Suggests` accordingly.
-* `` ?`tsfm-architecture-contract` `` documents the public plugin surface, and
+* `` ?`tsfm-architecture-contract` `` documents the public execution surface, and
   `tsfm_contract_version()` versions it. `new_tsfm_model()` stamps every handle.
 * `tsfm_check_architecture()` turns the contract into an executable gate:
   construction, forecast shape, quantile monotonicity, finiteness, context
   limits, empty-context handling, and batch/loop agreement. Built-in
-  architectures run it in the test suite; third parties get the same check
-  without reading the engine's internals. A `max_context` check the probe is too
+  architectures run it in the test suite; external implementations can use the
+  same check without reading the engine's internals. A `max_context` check the probe is too
   short to reach now reports not-applicable instead of passing, so the summary
   never counts an invariant that did not run.
 * `forecast()` is now re-exported from `generics` rather than defined locally,
@@ -43,6 +54,9 @@ model-loading and forecasting shell.
   returns only supported checkpoints, while `state = NULL` exposes pinned
   scaffold records and static cost, capability, manifest-cache, provenance,
   and weight-licence metadata without network access.
+* The checkpoint catalogue is explicitly package-owned and curated.
+  `tsfm_register_arch()` registers only an in-session constructor; it does not
+  publish model IDs or change what `tsfm_models()` reports.
 * Added a structured condition hierarchy rooted at `tsfm_error`, with one
   recoverable, external, or internal policy parent and structured fields on
   capability, context, quantile, device, download, checkpoint, and contract
@@ -55,8 +69,8 @@ model-loading and forecasting shell.
   and architecture return shape/finiteness/monotonicity before assembling a
   forecast.
 * `tsfm_pretrained()` loads the self-contained `stub` fixture and pinned native
-  TimesFM checkpoints through an open architecture registry
-  (`tsfm_register_arch()`).
+  TimesFM checkpoints through the constructor registered for each curated
+  catalogue entry.
 * `tsfm_capabilities()` reports per-model capability metadata, with pre-flight
   validation that rejects unsupported requests before inference.
 * `forecast()` forecasts a `tsibble` or data-frame panel with no optional

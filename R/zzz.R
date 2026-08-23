@@ -1,8 +1,8 @@
 utils::globalVariables(c("object", "new_data"))
 
 .onLoad <- function(libname, pkgname) {
-  # Register the built-in architectures. Third parties call tsfm_register_arch()
-  # from their own .onLoad to extend the catalogue without touching this package.
+  # Register constructors for the package-owned catalogue. Constructor
+  # registration and checkpoint curation are deliberately separate.
   tsfm_register_arch("stub", stub_constructor, overwrite = TRUE)
   tsfm_register_arch("ttm", ttm_constructor, overwrite = TRUE)
   tsfm_register_arch("timesfm", timesfm_constructor, overwrite = TRUE)
@@ -37,23 +37,6 @@ utils::globalVariables(c("object", "new_data"))
           "i" = "The engine will be unavailable; everything else still works.",
           "x" = conditionMessage(e)
         ))
-      }
-    )
-  }
-
-  # Register the harus backend when harus is loaded. The registry is optional:
-  # if harus is not installed, nothing happens. tsfm works standalone. If both
-  # are loaded, this makes every pretrained checkpoint available in harus'
-  # model registry without requiring harus to know tsfm's internals.
-  if (requireNamespace("harus", quietly = TRUE)) {
-    tryCatch(
-      tsfm_register_harus_backend(),
-      error = function(e) {
-        # Silent: harus is optional, and its absence is normal. The message is
-        # for debugging only.
-        if (identical(Sys.getenv("TSFM_VERBOSE_LOAD"), "true")) {
-          message("tsfm: could not register harus backend: ", conditionMessage(e))
-        }
       }
     )
   }

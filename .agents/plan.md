@@ -6,7 +6,7 @@ contract. [`roadmap.md`](./roadmap.md) owns release order and gates;
 [`consumer-api.md`](./consumer-api.md) specifies the surface downstream
 packages rely on.
 
-*Last reviewed: 2026-08-13.*
+*Last reviewed: 2026-08-23.*
 
 ---
 
@@ -40,6 +40,10 @@ contract and numerical parity against a pinned upstream implementation.
 6. **Consumer-safe operation.** Discovery is offline, failures are classed,
    expensive lifecycle steps are explicit, reuse is bounded, and inference is
    deterministic, quiet, and interruptible.
+7. **Curated discovery.** The package owns the checkpoint catalogue. Runtime
+   constructor registration never changes what `tsfm_models()` reports, so
+   downstream selection remains reproducible and `supported` retains one
+   release-controlled meaning.
 
 ## Public contract
 
@@ -57,6 +61,11 @@ tsfm_unload(model_id = NULL, revision = NULL, device = NULL)
 weights, or model. Supported rows include immutable revision, architecture,
 capabilities, context and quantile limits, parameter and download estimates,
 offline cache status, and weight licence.
+
+The catalogue is package-owned. `tsfm_register_arch()` changes only the
+constructor mapping used after a curated entry resolves; it does not add model
+IDs or support claims. This keeps `tsai` discovery stable across installed and
+loaded packages.
 
 `hfhub` owns downloaded files. `tsfm` owns a bounded in-process LRU of
 constructed handles, configured by `options(tsfm.max_loaded_models = 1L)`.

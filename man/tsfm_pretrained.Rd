@@ -41,3 +41,8 @@ constructor, and optionally retains the constructed handle in a bounded
 R-session LRU. Scaffold and experimental checkpoints fail before download;
 use \code{\link[=tsfm_download]{tsfm_download()}} only when explicitly prefetching their files.
 }
+\examples{
+model <- tsfm_pretrained("stub")
+tsfm_capabilities(model)
+tsfm_unload("stub")
+}

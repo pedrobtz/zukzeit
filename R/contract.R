@@ -1,16 +1,23 @@
 # The public architecture contract.
 #
-# tsfm is an engine: the surface below is what third-party architectures are
+# tsfm is an engine: the surface below is what architecture implementations are
 # written against, so it is versioned and changes only with a deprecation cycle.
 # Everything else in the package (loaders, adapters, batching) is free to move.
 
 #' The tsfm architecture contract
 #'
 #' `tsfm` is an inference engine: it owns the path from a pretrained checkpoint
-#' to predictive quantiles, and nothing above it. An *architecture* is a plugin
-#' that satisfies the contract described here. Register one with
-#' [tsfm_register_arch()] and it becomes usable through every adapter the
-#' package ships — no fork, and no changes to `tsfm` itself.
+#' to predictive quantiles, and nothing above it. An *architecture* is a
+#' constructor and forward pass satisfying the contract described here.
+#'
+#' [tsfm_register_arch()] associates a constructor with an architecture key in
+#' the current R session. Registration does not add checkpoint metadata to the
+#' package-owned catalogue and does not make arbitrary model IDs available to
+#' [tsfm_pretrained()] or model-ID-based adapters. A checkpoint is exposed by
+#' those APIs only after it is curated in `tsfm`, including an immutable
+#' revision, manifest, licence metadata, contract conformance, and numerical
+#' parity. Independently constructed [new_tsfm_model()] handles can still use
+#' the framework-neutral [forecast()] path.
 #'
 #' Verify an implementation with [tsfm_check_architecture()].
 #'
