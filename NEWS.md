@@ -1,7 +1,8 @@
 # tsfm 0.1.0
 
-First release establishing native TimesFM inference and the surrounding
-model-loading and forecasting shell.
+Development release. The native TimesFM inference baseline and surrounding
+model-loading and forecasting shell are implemented. Toto 2.0 4M and a native
+Chronos-2 port remain required before `0.1.0` is released.
 
 * Recorded the Apache-2.0 provenance of the native TimesFM derivative files,
   preserved Google LLC's copyright notice, credited the upstream project, and
@@ -169,8 +170,9 @@ model-loading and forecasting shell.
   model.
 * **TTM** remains a registered scaffold deferred until the engine represents
   point-only output.
-* **Chronos-2** is no longer registered or advertised as available. Its
-  unverified Brulee adapter is kept as prior art under `.agents/reference/`
-  rather than shipped in `R/`, and `brulee` has left `Suggests`: the package no
-  longer declares a dependency for code nothing calls. `tsfm_pretrained()` still
-  rejects Chronos-2 ids before any network or tensor work.
+* The old **Chronos-2** Brulee adapter is no longer registered or advertised as
+  executable. It is kept as prior art under `.agents/reference/` rather than
+  shipped in `R/`, and `brulee` has left `Suggests`: the package no longer
+  declares a dependency for code nothing calls. `tsfm_pretrained()` continues
+  to reject Chronos-2 ids before any network or tensor work until the required
+  native port passes its `0.1.0` support gates.

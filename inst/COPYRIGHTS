@@ -30,6 +30,12 @@ batching, and package integration. They carry prominent modification notices.
 The complete Apache License, Version 2.0 is distributed in
 LICENSES/Apache-2.0.txt. The pinned upstream source contains no NOTICE file.
 
+The numerical reference files under tests/testthat/fixtures/timesfm/ were
+generated from the pinned official TimesFM implementation and checkpoint. They
+are distributed as upstream-derived test material under the same Apache-2.0
+terms. The fixture generator, input definitions, and R test harness are
+original tsfm work.
+
 Checkpoint weights
 ------------------
 

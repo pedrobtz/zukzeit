@@ -19,18 +19,18 @@ after it.
 
 The engine runs the pinned TimesFM 2.5 checkpoint natively, passes its
 architecture-conformance and numerical-parity gates, and serves all four
-required user workflows. GitHub Actions is green on `main` across five
-configurations at the last fully green baseline. The latest published matrix
-predates the local removal of an undeclared optional integration and is red;
-its dedicated checkpoint-backed numerical-parity job passed. A fresh remote
-run of the release candidate is part of the remaining release hardening.
+required user workflows. This is now the completed first-model baseline, not a
+`0.1.0` release candidate: the release scope also requires Toto 2.0 4M and
+Chronos-2. The existing CI matrix validates the TimesFM baseline while the two
+new release-model stages remain open.
 
 | Architecture | Current state | `0.1.0` role |
 |---|---|---|
 | `stub` | Works end to end; random-walk test fixture | Keeps engine and adapter tests fast |
 | `ttm` | Registered scaffold; forward pass aborts | Deferred: the selected TTM-R2 checkpoint is point-forecasting, not native-quantile |
-| `chronos2` | Unverified and incorrect Brulee adapter | Removed from the release path; reference work only |
-| `timesfm` | Native R `torch`; conformance and pinned CPU parity pass | **The first supported native model** |
+| `timesfm` | Native R `torch`; conformance and pinned CPU parity pass | **Implemented `0.1.0` general quantile model** |
+| `toto2` | No native implementation yet | **Required `0.1.0` efficient probabilistic model** |
+| `chronos2` | Old Brulee adapter removed; no native implementation yet | **Required `0.1.0` multivariate/covariate model** |
 
 The repository already contains useful foundations:
 
@@ -44,14 +44,16 @@ The repository already contains useful foundations:
 - stub-based tests of the core execution path, plus opt-in real-checkpoint
   smoke tests covering all four user journeys.
 
-The important remaining gaps are:
+The important remaining `0.1.0` gaps are:
 
 - TTM has no weight map, module, or forward pass and remains outside `0.1.0`;
-- the current contract cannot carry covariates, multivariate targets, or sample
-  paths; these capability records correctly remain `FALSE`;
-- the checkpoint-backed numerical-parity CI job is green, while the ordinary
-  five-platform matrix must be rerun after the local dependency cleanup;
-- release mechanics remain: remote release-candidate validation and tag.
+- Toto 2.0 4M needs a native module, checkpoint map, fixtures, conformance, and
+  numerical-parity certification;
+- the current contract cannot carry covariates or multivariate targets;
+  contract v2 must add them without breaking contract-v1 consumers;
+- Chronos-2 needs a native module, contract-v2 execution path, checkpoint map,
+  fixtures, conformance, and numerical-parity certification;
+- release hardening must be repeated after both architectures land.
 
 These gaps determine the stages below.
 
@@ -59,20 +61,25 @@ These gaps determine the stages below.
 
 ## Goal for `0.1.0`
 
-`0.1.0` is the first usable proof of the package's premise:
+`0.1.0` is the first useful portfolio proof of the package's premise:
 
-> A user can load a pinned TimesFM 2.5 checkpoint from Hugging Face and produce
-> numerically correct zero-shot quantile forecasts locally, using native R
-> `torch`, through the plain-R API and the primary R forecasting adapters,
-> while a downstream package such as `tsai` can discover, budget, reuse, and
-> safely recover around that engine through a stable programmatic API.
+> A user can choose among pinned TimesFM 2.5, Toto 2.0 4M, and Chronos-2
+> checkpoints and produce numerically correct zero-shot forecasts locally,
+> using native R `torch`, through the plain-R API and the primary R forecasting
+> adapters. A downstream package such as `tsai` can discover their distinct
+> costs and capabilities, reuse handles, and safely recover around the engine
+> through a stable programmatic API.
 
-The release is intentionally narrow. One trustworthy native model is more
-valuable than several registered but non-executable architectures.
+The three models are complementary: TimesFM is the general quantile baseline,
+Toto is the small deployment model, and Chronos-2 proves multivariate targets
+plus past and future-known covariates. No checkpoint is supported before both
+conformance and numerical-parity gates pass.
 
 ### Required user journeys
 
-All four must work from a clean installation:
+All four surfaces must work from a clean installation. The example uses
+TimesFM; equivalent smoke tests must run for Toto and Chronos-2, with
+contract-v2 inputs exercised for Chronos-2:
 
 ```r
 # Plain R
@@ -112,19 +119,20 @@ parsnip::fit(spec, value ~ 1, data = history)
 
 `0.1.0` is complete only when all of the following are true:
 
-- **Native execution:** TimesFM 2.5 weights are downloaded, cached, loaded with
-  `safetensors`, mapped into an R `torch` module, and evaluated without Python
-  or Brulee at runtime.
-- **Numerical correctness:** committed golden fixtures generated by the pinned
-  Python reference implementation pass on CPU within a documented tolerance,
-  expressed as the `atol`/`rtol` pair `torch.testing.assert_close()` uses and
-  recorded in each fixture.
-- **Contract conformance:** TimesFM passes `tsfm_check_architecture()`, including
-  shape, finite output, monotone quantiles, context limits, and batch/loop
-  agreement.
-- **Honest scope:** every advertised capability has an executable path through
-  contract v1. Unsupported covariate, multivariate, sample, and fine-tuning
-  requests fail before inference.
+- **Native execution:** TimesFM 2.5, Toto 2.0 4M, and Chronos-2 weights are
+  downloaded, cached, loaded into R `torch` modules, and evaluated without
+  Python or Brulee at runtime.
+- **Numerical correctness:** each checkpoint has committed golden fixtures
+  generated by a pinned official reference implementation and passes them on
+  CPU within a documented `atol`/`rtol` tolerance.
+- **Contract conformance:** all three models pass their applicable
+  `tsfm_check_architecture()` checks, including shape, finite output, monotone
+  quantiles, context limits, and batch/loop agreement.
+- **Honest scope:** every advertised capability has an executable path.
+  Contract v1 remains valid for univariate quantile consumers; contract v2
+  represents grouped targets and past/future covariates for Chronos-2.
+  Unsupported sample-path, point-only, imputation, and fine-tuning requests
+  fail before inference.
 - **Usable core:** single-series and panel forecasts work through `forecast()`;
   checkpoint provenance and weight licence are visible on the model handle;
   the offline catalogue, explicit download, bounded handle reuse, cache status,
@@ -141,8 +149,8 @@ parsnip::fit(spec, value ~ 1, data = history)
 - **Release quality:** generated documentation exists; examples do not download
   weights during checks; local and GitHub `R CMD check` report zero errors and
   zero warnings; the README describes only features that actually work.
-- **Reproducibility:** the supported model ID, checkpoint SHA, configuration,
-  fixture generator, expected outputs, and tolerance are recorded in the
+- **Reproducibility:** every supported model ID, checkpoint SHA, configuration,
+  fixture generator, expected output, and tolerance is recorded in the
   repository.
 
 CPU inference is the required portability baseline. CUDA and MPS support remain
@@ -151,16 +159,15 @@ or numerical certification is not a blocker for `0.1.0`.
 
 ### Explicitly not required for `0.1.0`
 
-- any second supported real model—including TTM, Chronos-2, Toto, PatchTST-FM,
-  Moirai, TiRex, or Sundial; the catalogue may still expose those families as
-  `experimental` or `scaffold` when their static metadata is complete;
+- any fourth supported real model, including TTM, Granite PatchTST-FM,
+  Sundial, TiRex-2, or another checkpoint family;
 - a Brulee runtime backend;
-- covariates or multivariate targets;
-- sample paths, conformal calibration, or reconciliation helpers;
+- point-only output, sample paths, reconstruction/imputation, conformal
+  calibration, or reconciliation helpers;
 - fine-tuning, LoRA, mixed precision, or distributed execution;
 - `modeltime`, recipe, `autoplot()`, or `as_tibble()` adapters;
-- a shared declarative preprocessing framework before a second native model
-  demonstrates genuine reusable structure;
+- a fully declarative shared preprocessing framework; common code is extracted
+  only where the three release ports demonstrate genuine duplication;
 - CRAN acceptance. The release must be CRAN-ready in quality, but a GitHub tag
   may precede submission.
 
@@ -168,7 +175,7 @@ or numerical certification is not a blocker for `0.1.0`.
 
 ## Architectural decisions for `0.1.0`
 
-### Native TimesFM 2.5 is the release model
+### Three native models define the release
 
 The engine contract promises predictive quantiles. The official
 [TimesFM 2.5 model card](https://huggingface.co/google/timesfm-2.5-200m-pytorch)
@@ -176,10 +183,11 @@ documents a point forecast plus 10 output channels containing the mean and
 0.1–0.9 quantiles. It therefore exercises the package's actual contract without
 an invented uncertainty layer.
 
-TimesFM is a materially harder first port than TTM: it has roughly 200 million
-parameters and 20 transformer layers. Stage 1 contains an explicit operator,
-memory, and checkpoint-loading feasibility gate so the release plan fails early
-if native R `torch` cannot execute the required graph acceptably.
+TimesFM remains the reference implementation and completed baseline. Toto 2.0
+4M adds a small, CPU-friendly probabilistic checkpoint without first requiring
+a new output type. Chronos-2 adds the release's richer input contract:
+multivariate targets and past/future-known covariates with requested quantiles.
+Each port owns its native module and pinned parity evidence.
 
 The official
 [TTM-R2 model card](https://huggingface.co/ibm-granite/granite-timeseries-ttm-r2)
@@ -194,17 +202,18 @@ reference behaviour. It is not the implementation foundation for this package:
 
 - `0.1.0` must prove native model ownership inside `tsfm`;
 - an adapter over another high-level R interface obscures the engine boundary;
-- the current wrapper is unverified and has correctness and lifecycle defects;
-- supporting it would expand the release surface without validating the native
+- the removed wrapper was unverified and had correctness and lifecycle defects;
+- using it would expand the release surface without validating the native
   loader or architecture path.
 
-Before release, `chronos2` must therefore either be removed from the built-in
-registry or be unmistakably marked experimental and excluded from the public
-supported-model catalogue. The README must not call it available.
+Chronos-2 therefore enters the supported catalogue only through a native
+R/`torch` port that passes the same conformance and parity gates as TimesFM.
+Until that stage closes, the existing early rejection remains in force and the
+README must describe Chronos-2 as planned rather than available.
 
-### Contract v1 stays narrow
+### Contract v2 extends rather than replaces contract v1
 
-The `0.1.0` forward contract remains:
+The existing univariate quantile contract remains supported unchanged:
 
 ```text
 predict_fn(context, h, quantile_levels) -> matrix[h, q]
@@ -213,9 +222,11 @@ predict_batch_fn(contexts, horizons, quantile_levels, device)
   -> list(matrix[h, q])
 ```
 
-TimesFM's `multivariate`, `past_covariates`, and `future_covariates` flags are
-set to `FALSE` for this release. The unused `samples` capability is removed or
-fixed at `FALSE` until a future contract provides a sample-return channel.
+Contract v2 adds typed grouped targets and optional past/future covariate
+channels for Chronos-2. Existing TimesFM callers and model ports continue to use
+contract v1 without synthetic empty inputs. Toto may advertise only the subset
+that is implemented and parity-tested. The `samples` capability remains
+`FALSE` until the later Sundial stage provides a sample-return channel.
 
 ### Adapters stay outside the engine
 
@@ -243,7 +254,7 @@ plausibly be maintained as a native R implementation.
 
 Priority meanings:
 
-- **P0 — release commitment:** the model on the current release critical path;
+- **P0 — release commitment:** a model on the current release critical path;
 - **P1 — core target:** an important, permissively licensed family that `tsfm`
   intends to support;
 - **P2 — conditional target:** valuable, but blocked by a contract extension,
@@ -251,29 +262,22 @@ Priority meanings:
 
 | Priority | Family and canonical checkpoint | Why it matters | Native output | Weight licence | Main blocker |
 |---|---|---|---|---|---|
-| **P0** | [TimesFM 2.5](https://huggingface.co/google/timesfm-2.5-200m-pytorch) | Widely recognized general model; long context; directly matches the quantile-first engine | Point plus 0.1–0.9 quantiles | Apache-2.0 | 200M transformer port and memory/operator feasibility |
-| **P1** | [Chronos-2](https://huggingface.co/amazon/chronos-2) | High-demand universal model; univariate, multivariate, panels, and past/future covariates | Requested quantiles | Apache-2.0 | Contract v2 for grouped targets and covariates; group attention |
-| **P1** | [Toto 2.0](https://huggingface.co/Datadog/Toto-2.0-4m) | Strong probabilistic family from 4M to 2.5B parameters; attractive CPU/edge and multivariate profiles | 0.1–0.9 quantiles | Apache-2.0 | Alternating time/variate attention and PyTorch 2.5-era implementation details |
-| **P1** | [Granite PatchTST-FM R1](https://huggingface.co/ibm-granite/granite-timeseries-patchtst-fm-r1) | Strong transparent transformer baseline; long context, dense quantiles, and simultaneous missing-value imputation | 99 trained quantiles | Apache-2.0 | 260M model and reconstruction/masking semantics |
-| **P1** | [Granite TTM R2/R2.1](https://huggingface.co/ibm-granite/granite-timeseries-ttm-r2) | Tiny, fast, laptop-friendly model family; important lower bound for local R deployment | Point forecast | Apache-2.0 | Output contract must represent point-only models; many focused checkpoint branches |
-| **P2** | [Sundial / Timer 3.0](https://huggingface.co/thuml/sundial-base-128m) | Adds genuinely generative probabilistic forecasting and arbitrary statistics from forecast samples | Sample paths | Apache-2.0 | Sample-path contract and flow-matching sampler |
-| **P2** | [Moirai 2.0 Small](https://huggingface.co/Salesforce/moirai-2.0-R-small) | Compact 11M-class universal transformer with native quantile training and a mature reference library | 0.1–0.9 quantiles | CC-BY-NC-4.0 | Non-commercial research weights; not suitable as a default production target |
-| **P2** | [TiRex](https://huggingface.co/NX-AI/TiRex) | Important 35M xLSTM model with competitive short- and long-horizon probabilistic forecasts | Point plus quantiles | NXAI Community License | Commercial restrictions and xLSTM/custom-kernel port risk |
+| **P0** | [TimesFM 2.5](https://huggingface.co/google/timesfm-2.5-200m-pytorch) | General quantile baseline with long context | Point plus 0.1–0.9 quantiles | Apache-2.0 | Implemented and certified |
+| **P0** | [Toto 2.0 4M](https://huggingface.co/Datadog/Toto-2.0-4m) | Small CPU/edge representative with a scalable probabilistic family | 0.1–0.9 quantiles | Apache-2.0 | Native alternating time/variate attention port and parity fixtures |
+| **P0** | [Chronos-2](https://huggingface.co/amazon/chronos-2) | Universal representative for multivariate targets and past/future covariates | Requested quantiles | Apache-2.0 | Contract v2, native group-attention port, and parity fixtures |
+| **P1** | [Granite PatchTST-FM R1](https://huggingface.co/ibm-granite/granite-timeseries-patchtst-fm-r1) | Reconstruction representative with dense quantiles and simultaneous missing-value imputation | 99 trained quantiles plus imputation | Apache-2.0 | Reconstruction/masking output contract and 260M native port |
+| **P1** | [Sundial / Timer 3.0](https://huggingface.co/thuml/sundial-base-128m) | Generative representative supporting arbitrary statistics from forecast samples | Sample paths | Apache-2.0 | Sample-path contract and flow-matching sampler |
 
 ### Support order is not the same as model rank
 
 Implementation order follows contract and porting dependencies:
 
 1. **TimesFM 2.5** proves the current quantile contract in `0.1.0`.
-2. **Toto 2.0 4M** is the preferred second port: it stays within the quantile
-   contract while adding a genuinely small checkpoint and a scalable family.
-3. **Chronos-2** follows the grouped-target and covariate contract extension.
-4. **TTM** follows explicit point-forecast support.
-5. **Granite PatchTST-FM** is added when a second large transformer is justified
-   by demand and maintenance capacity.
-6. **Sundial** follows a sample-path output contract.
-7. **Moirai 2.0** and **TiRex** remain opt-in research candidates unless their
-   weight terms become suitable for the package's broad user base.
+2. **Toto 2.0 4M** completes the efficient probabilistic slot in `0.1.0`.
+3. **Chronos-2** completes `0.1.0` after the grouped-target and covariate
+   contract extension.
+4. **Granite PatchTST-FM** follows with reconstruction and imputation semantics.
+5. **Sundial** follows with a sample-path output contract.
 
 Within a family, `tsfm` supports architecture-compatible checkpoints through
 one implementation; it does not create bespoke code for every size or branch.
@@ -284,6 +288,12 @@ variants are smoke-tested outside the normal check path.
 
 - Hosted-only services such as TimeGPT: they are API clients, not local model
   engines.
+- Granite TTM is not a current target because Toto fills the small local-model
+  slot while preserving probabilistic output.
+- TiRex-2 is a permissively licensed alternative to Chronos-2, but supporting
+  both does not currently justify a second multivariate/covariate port.
+- Moirai 2.0 and TiRex v1 are excluded because their checkpoint terms are not
+  MIT or Apache-2.0.
 - Older generations when a compatible current generation supersedes them,
   unless users demonstrate a reproducible accuracy or deployment reason.
 - Fine-tuned community checkpoints: the registry may load compatible variants,
@@ -309,7 +319,9 @@ when its exit gate is executable and green.
 | 2 | Build the reference, loader, download API, and handle LRU | **Implementation complete** |
 | 3 | Implement safe native TimesFM inference | **Implementation complete** |
 | 4 | Prove all four user-facing workflows | **Implementation complete** |
-| 5 | Validate consumer compatibility and release `0.1.0` | **Hardening; remote rerun pending** |
+| 5 | Implement and certify Toto 2.0 4M | **Not started** |
+| 6 | Add contract v2 and implement native Chronos-2 | **Not started** |
+| 7 | Validate all three models and release `0.1.0` | **Blocked on stages 5–6** |
 
 ### Stage 0 — Honest baseline
 
@@ -652,9 +664,66 @@ Local close-out on 2026-08-13:
 - the deterministic suite covers the stub-backed `TSFM()` workflow, and a
   built-package `R CMD check` including vignettes reports 0/0/0.
 
-Stage 5 owns release hardening. GitHub Actions is green on `main`.
+The completed TimesFM path is the baseline for the two remaining model stages.
 
-### Stage 5 — Release hardening
+### Stage 5 — Efficient probabilistic model: Toto 2.0 4M
+
+Add the small deployment representative without weakening the support bar.
+
+Deliverables:
+
+- pin the official Toto 2.0 source and 4M checkpoint revisions, required-file
+  manifest, licence, configuration, tensor layout, and download size;
+- verify every required operator and the checkpoint-to-module mapping in
+  R/`torch` before committing the full port;
+- generate independent golden fixtures for short and typical contexts,
+  horizon variation, multiple series, and batch/loop agreement;
+- implement native preprocessing, alternating time/variate attention, quantile
+  decoding, state-dict loading, and single/batch execution;
+- integrate the model with explicit download, resident-handle reuse, cache
+  status, unload, structured errors, and device resolution;
+- exercise plain R, batched `as_fable()`, `TSFM()`, and parsnip paths against
+  the real 4M checkpoint;
+- advertise only capabilities demonstrated by fixtures and public API tests;
+  larger Toto checkpoints remain experimental until smoke-tested.
+
+Exit gate:
+
+- Toto 2.0 4M passes architecture conformance and pinned CPU numerical parity,
+  all four user surfaces, deterministic/quiet/interrupt tests, and becomes a
+  `supported` catalogue row.
+
+### Stage 6 — Universal inputs and native Chronos-2
+
+Extend the engine for the multivariate/covariate representative while keeping
+contract-v1 callers source-compatible.
+
+Deliverables:
+
+- freeze contract v2 in the architecture and consumer documentation, including
+  grouped targets, past covariates, future-known covariates, alignment rules,
+  missingness, shapes, and structured capability failures;
+- keep contract-v1 TimesFM and Toto handles executable without dummy covariate
+  arguments or adapter changes;
+- pin the official Chronos-2 source and checkpoint revisions, Safetensors
+  manifest, licence, configuration, tensor layout, and download size;
+- generate independent fixtures covering univariate, multivariate, past-only
+  covariate, future-known covariate, and panel/batch cases;
+- implement the native encoder, group attention, preprocessing, state-dict
+  mapping, requested-quantile head, and contract-v2 single/batch execution;
+- extend plain-R inputs and the optional adapters only as required to express
+  the richer contract, documenting any route that cannot preserve batching;
+- retain early rejection of Chronos-2 until both support gates and the
+  end-to-end consumer tests pass.
+
+Exit gate:
+
+- Chronos-2 passes contract-v2 conformance and pinned CPU numerical parity for
+  every required input mode, all applicable user surfaces, lifecycle and
+  interruption tests, and becomes a `supported` catalogue row without
+  regressing contract-v1 models.
+
+### Stage 7 — Release hardening
 
 Turn the working implementation into a supportable release.
 
@@ -669,11 +738,12 @@ Deliverables:
 - remove unused hard dependencies and verify the Imports/Suggests boundary;
 - make all examples and tests network-safe and CRAN-safe;
 - run `R CMD check` on a source tarball locally and in GitHub Actions;
-- test a clean install followed by the documented TimesFM workflow;
+- test a clean install followed by the documented TimesFM, Toto, and Chronos-2
+  workflows;
 - run the complete consumer-contract suite with networking disabled, including
   catalogue filtering, structured errors, cache lifecycle, deterministic
   inference, interrupt cleanup, and the stub-backed `TSFM()` workflow;
-- report the first-download size and cache behaviour clearly;
+- report first-download size and cache behaviour for all three checkpoints;
 - record known limitations and supported checkpoint variants;
 - set `Version: 0.1.0`, create release notes, and tag the release only after all
   acceptance criteria are green.
@@ -684,7 +754,7 @@ Exit gate:
   tests pass, the README example works, and no public claim exceeds an
   executable test.
 
-Local close-out on 2026-08-14, release mechanics excepted:
+TimesFM-only hardening baseline on 2026-08-14:
 
 - `R CMD check` on the built source tarball reports 0 errors, 0 warnings, 0
   notes, with vignettes enabled; the same commit is green on GitHub Actions
@@ -706,16 +776,16 @@ Local close-out on 2026-08-14, release mechanics excepted:
   structured errors, cache lifecycle, deterministic inference, interrupt
   cleanup, and the stub-backed `TSFM()` workflow.
 
-Current audit on 2026-08-23 supersedes the check and CI status in the dated
-close-out above: local full and dependency-only source checks report 0 errors,
-0 warnings, and two notes (new submission and local HTML Tidy); the latest
-checkpoint-backed parity job is green; and the ordinary remote matrix predates
-the dependency cleanup and must be rerun.
+Current scope decision on 2026-08-23 supersedes the release conclusion in the
+dated baseline above. Local full and dependency-only source checks for the
+TimesFM implementation report 0 errors, 0 warnings, and two notes (new
+submission and local HTML Tidy), and its checkpoint-backed parity job is green.
+Those results remain useful regression evidence but do not close Stage 7.
 
-Source-provenance attribution is resolved and the package is now versioned
-`0.1.0`. Remaining before the tag: run the full remote matrix and
-checkpoint-backed parity job on this exact release candidate, record the green
-result, and tag.
+Source-provenance attribution for TimesFM is resolved and the package is
+versioned `0.1.0`, but it is no longer a release candidate. Remaining before
+the tag: complete and certify Toto and Chronos-2, repeat the full local and
+remote validation on all three models, record the green result, and tag.
 
 ---
 
@@ -752,32 +822,34 @@ Rules:
 
 ## After `0.1.0`
 
-Later work is ordered by what the first native model teaches us, not committed
-as part of the initial release.
+The next releases add the two remaining capability representatives selected for
+the roadmap rather than additional models that duplicate an existing slot.
 
-### `0.2.0` candidate — efficient model family
+### `0.2.0` candidate — reconstruction and Granite PatchTST-FM
 
-- implement Toto 2.0, certifying the 4M checkpoint first and smoke-testing other
-  architecture-compatible sizes;
-- extract shared preprocessing only where TimesFM and Toto demonstrate real
-  duplication;
-- certify accelerator paths and benchmark batching;
+- extend the output contract for reconstructed historical values and explicit
+  missingness masks;
+- implement Granite PatchTST-FM R1 and certify its dense quantiles,
+  reconstruction semantics, and simultaneous imputation;
+- add user-facing retrieval of imputed values without changing ordinary
+  forecast output;
+- certify accelerator paths and benchmark batching across the supported family;
 - submit to CRAN if `0.1.0` was initially released only on GitHub.
 
-### `0.3.0` candidate — universal inputs and Chronos-2
+### `0.3.0` candidate — sample paths and Sundial
 
-- design contract v2 for past/future covariates and multivariate targets;
-- migrate existing architectures with a documented compatibility path;
-- implement native Chronos-2 against the richer contract;
-- add recipe and modeltime adapters only after the core data contract is real;
-- decide whether sample paths belong in the model contract.
+- add a sample-path output contract with deterministic seed handling and clear
+  memory limits;
+- implement Sundial's native flow-matching sampler and certify sample-derived
+  point, quantile, and interval summaries;
+- integrate sample forecasts with plain R and optional adapters without making
+  the quantile path depend on sample generation.
 
 ### Later releases
 
-- extend the output contract to represent point-only models and implement TTM;
-- add Granite PatchTST-FM when a second large transformer is justified;
-- add sample paths and Sundial;
-- evaluate research-only Moirai and TiRex support under their weight licences;
+- reconsider TTM only if point-only demand justifies a separate output contract;
+- reconsider TiRex-2 only if it offers enough value beyond Chronos-2 to justify
+  a second multivariate/covariate architecture;
 - conformal and reconciliation examples through existing R packages;
 - fine-tuning, LoRA, and mixed precision after inference is mature.
 
@@ -803,8 +875,10 @@ as part of the initial release.
 ## Definition of done
 
 `0.1.0` is not “the scaffolding is complete.” It is done when a new user can
-install the package, load the pinned TimesFM 2.5 checkpoint, and obtain the same
-forecast as the reference implementation through a documented R workflow—with
-the result verified continuously by CI. A downstream `tsai` installation can
-also discover the checkpoint offline, control download and reuse, handle
-failures by class, and compose it through `TSFM()` without private APIs.
+install the package and obtain reference-matching forecasts from the pinned
+TimesFM 2.5, Toto 2.0 4M, and Chronos-2 checkpoints through documented R
+workflows, including Chronos-2 multivariate and covariate inputs, with the
+results verified continuously by CI. A downstream `tsai` installation can
+discover all three checkpoints offline, compare their capabilities and costs,
+control download and reuse, handle failures by class, and compose them through
+`TSFM()` without private APIs.

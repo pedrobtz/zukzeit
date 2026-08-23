@@ -151,11 +151,16 @@ tsfm_models() # safe default: supported checkpoints only
 | Stub | `stub` | executable random-walk test fixture; not a foundation model |
 | TimesFM 2.5 | `google/timesfm-2.5-200m-pytorch` | supported native point and 0.1–0.9 quantile inference |
 | TTM (TinyTimeMixer) | `ibm-granite/granite-timeseries-ttm-r2` | registered scaffold; deferred until point-only output is supported |
-| Chronos-2 | `amazon/chronos-2` | unregistered reference adapter; not supported in `0.1.0` |
+| Chronos-2 | `amazon/chronos-2` | unregistered until the required native `0.1.0` port passes conformance and parity |
 
 TimesFM is marked supported because it passes both the architecture conformance
 gate and every committed numerical-parity fixture against the pinned official
 implementation.
+
+The release roadmap adds Toto 2.0 4M and a new native Chronos-2 port before
+`0.1.0`; Granite PatchTST-FM and Sundial are the selected later capability
+representatives. Planned models do not appear in `tsfm_models()` until their
+metadata and executable support gates are complete.
 
 `tsfm_models()` is package-owned: `supported` means the checkpoint has passed
 `tsfm`'s release gates, not that another package registered a constructor in the

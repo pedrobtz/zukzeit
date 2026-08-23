@@ -109,6 +109,8 @@ tune_grid(
 ## Status
 
 The public workflow above is real, but its model is deliberately only a test
-fixture. TimesFM 2.5 is the first release target. TTM is deferred until the
-output contract represents point forecasts, and the old Chronos-2 Brulee bridge
-is retained as unregistered reference work only.
+fixture. TimesFM 2.5 is the first implemented release model. Toto 2.0 4M and a
+new native Chronos-2 port are required before `0.1.0`; the old Chronos-2 Brulee
+bridge remains unregistered reference work only. TTM is not a current target
+because the selected small-model slot is probabilistic Toto rather than a
+point-only checkpoint.

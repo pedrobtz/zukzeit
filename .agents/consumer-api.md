@@ -28,6 +28,12 @@ model before loading it, choose a response to failure without parsing messages,
 control expensive downloads and model construction, and compose the engine
 with native R forecasting workflows.
 
+The final `0.1.0` supported catalogue must contain the pinned TimesFM 2.5,
+Toto 2.0 4M, and Chronos-2 checkpoints. Stage 6 will amend this contract with
+the exact backward-compatible structured-input API for Chronos-2 multivariate
+targets and covariates before that model is implemented. Until then, the
+contract-v1 univariate surface below remains the only executable inference API.
+
 ## R1 — Offline checkpoint catalogue
 
 ```r

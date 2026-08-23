@@ -20,9 +20,11 @@ The package fills the model-runtime gap in R. Existing packages already provide
 temporal data structures, resampling, metrics, reconciliation, and deployment;
 `tsfm` should integrate with them instead of reproducing them.
 
-The first release deliberately proves one model well: TimesFM 2.5. A model is
-not supported merely because it is registered. It must pass the architecture
-contract and numerical parity against a pinned upstream implementation.
+The first release proves a small, complementary portfolio: TimesFM 2.5 as the
+general quantile baseline, Toto 2.0 4M as the efficient model, and Chronos-2 as
+the multivariate and covariate-aware model. A model is not supported merely
+because it is registered. It must pass the architecture contract and numerical
+parity against a pinned upstream implementation.
 
 ## Design principles
 
@@ -33,8 +35,9 @@ contract and numerical parity against a pinned upstream implementation.
 3. **Truthful metadata.** Capability and catalogue entries describe executable
    behaviour at immutable checkpoint revisions.
 4. **Quantiles first.** Contract v1 returns an `h` by `q` quantile matrix.
-   Point-only, sample-path, multivariate, and covariate channels require later
-   contract versions.
+   A backward-compatible contract v2 adds grouped targets and past/future
+   covariates for Chronos-2. Point-only and sample-path outputs remain later
+   contract work.
 5. **Adapters have equal standing.** Plain R, fabletools, and parsnip adapt the
    same engine objects. Optional ecosystems stay in `Suggests`.
 6. **Consumer-safe operation.** Discovery is offline, failures are classed,
@@ -84,6 +87,12 @@ A `tsfm_model` records checkpoint identity, resolved revision and device,
 capabilities, preprocessing configuration, and callable single/batch inference
 functions. Validation rejects unsupported requests before download or tensor
 work where possible. Modules run in evaluation mode with gradients disabled.
+
+Stage 6 adds a contract-v2 structured input for grouped targets and aligned
+past/future covariates. Its exact R shape must be frozen in this plan,
+`consumer-api.md`, and the public architecture documentation before the
+Chronos-2 implementation begins. The extension must leave contract-v1 model
+handles and univariate `forecast()` calls source-compatible.
 
 Every engine error inherits from `tsfm_error` and exactly one policy family:
 `tsfm_error_recoverable`, `tsfm_error_external`, or `tsfm_error_internal`.
@@ -159,14 +168,11 @@ reference reproducibility, and native R feasibility.
 
 | Priority | Family | Role |
 |---|---|---|
-| P0 | TimesFM 2.5 | `0.1.0` reference model; native point and quantile output |
-| P1 | Toto 2.0 | Preferred efficient second port within the quantile contract |
-| P1 | Chronos-2 | Universal model after multivariate/covariate contract v2 |
-| P1 | Granite TTM R2/R2.1 | CPU-friendly point model after point-only output support |
-| P1 | Granite PatchTST-FM R1 | Dense-quantile transformer and imputation candidate |
-| P2 | Sundial / Timer 3.0 | Generative model after sample-path output support |
-| P2 | Moirai 2.0 | Research candidate constrained by non-commercial weights |
-| P2 | TiRex | Research candidate constrained by licence and xLSTM port risk |
+| P0 | TimesFM 2.5 | `0.1.0` general quantile baseline; implemented and certified |
+| P0 | Toto 2.0 4M | `0.1.0` efficient probabilistic model |
+| P0 | Chronos-2 | `0.1.0` multivariate and covariate-aware model through contract v2 |
+| P1 | Granite PatchTST-FM R1 | Later reconstruction and missing-value-imputation model |
+| P1 | Sundial / Timer 3.0 | Later generative model after sample-path output support |
 
 Hosted-only services and unpinned community checkpoints are outside the engine
 catalogue. Detailed ordering and blockers live in `roadmap.md`.
@@ -182,15 +188,18 @@ Every native architecture has two independent support gates:
 
 Core tests remain deterministic and network-safe. Hub and full-checkpoint smoke
 tests are explicit opt-ins. Adapter tests use the stub for speed, then add an
-opt-in TimesFM path. Consumer-contract tests cover offline catalogue discovery,
-error inheritance, LRU eviction and device keys, silent repeated inference,
-interrupt cleanup, and `fabletools::model(TSFM(...))`.
+opt-in path for every supported checkpoint. Consumer-contract tests cover
+offline catalogue discovery, error inheritance, LRU eviction and device keys,
+silent repeated inference, interrupt cleanup, and
+`fabletools::model(TSFM(...))`.
 
 ## Deliberate non-goals for `0.1.0`
 
-- A second supported real model.
 - Python or Brulee runtime fallback.
-- Multivariate targets, covariates, sample paths, or fine-tuning.
+- Point-only forecasts, sample paths, reconstruction/imputation, or
+  fine-tuning.
+- Granite TTM, Granite PatchTST-FM, Sundial, or any model beyond the three
+  release checkpoints.
 - New backtesting, selection, metric, ensemble, reconciliation, or conformal
   frameworks.
 - Hard dependencies on fabletools, parsnip, modeltime, or `tsai`.

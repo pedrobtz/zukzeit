@@ -16,10 +16,10 @@ A second source-package check with `_R_CHECK_DEPENDS_ONLY_=true` reports the
 same 0 errors, 0 warnings, and 2 notes, confirming that the package installs and
 its tests run with only the declared Imports present.
 
-The latest published five-platform GitHub Actions matrix predates the local
-removal of an undeclared optional integration and is not a release result. It
-must be rerun on the release candidate before submission. The dedicated
-checkpoint-backed numerical-parity job passed on that published run.
+These check results validate the implemented TimesFM baseline. They are not
+submission results for the expanded `0.1.0` scope; a fresh full matrix and
+checkpoint-backed parity jobs for every release model are required before this
+file is finalized for CRAN.
 
 ## Test scope
 
@@ -41,14 +41,14 @@ checkpoint-backed numerical-parity job passed on that published run.
 
 ## Release status
 
-This is the `0.1.0` release candidate. Submission remains gated on the complete
-GitHub Actions matrix and checkpoint-backed parity job passing on this exact
-candidate.
+This is not yet the `0.1.0` release candidate. The release scope now requires
+native, parity-certified Toto 2.0 4M and Chronos-2 implementations in addition
+to TimesFM, followed by complete local and remote package validation.
 
-TimesFM 2.5 is the first supported native architecture: it passes both release
-gates, contract conformance and numerical parity against the pinned reference
-implementation. TTM remains a registered scaffold whose forward pass aborts by
-design, and Chronos-2 is unregistered and rejected before any network or tensor
-work. The R TimesFM derivative retains Google LLC's copyright notice and the
-upstream Apache-2.0 licence; detailed provenance is installed in `COPYRIGHTS`.
-Known limitations are listed in the README.
+TimesFM 2.5 is the first supported native architecture: it passes contract
+conformance and numerical parity against the pinned reference implementation.
+TTM remains a registered scaffold whose forward pass aborts by design, and
+Chronos-2 remains unregistered and rejected before any network or tensor work
+until its new native port is complete. The R TimesFM derivative retains Google
+LLC's copyright notice and the upstream Apache-2.0 licence; detailed provenance
+is installed in `COPYRIGHTS`. Known limitations are listed in the README.
