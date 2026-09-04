@@ -25,10 +25,7 @@ zuk_catalogue_records <- function() {
       model_id = "Datadog/Toto-2.0-4m",
       architecture = "toto2",
       revision = "8306a9801cf98c0f5ffe4b2dcc8f496e616d84d9",
-      # Native inference matches the pinned reference, but the row stays
-      # experimental until committed golden fixtures back that claim without a
-      # network. `supported` is a release-controlled promise, not a status.
-      state = "experimental",
+      state = "supported",
       max_context = 4096L,
       quantile_levels = seq(0.1, 0.9, by = 0.1),
       multivariate = FALSE,

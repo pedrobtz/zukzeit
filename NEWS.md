@@ -239,8 +239,18 @@ Chronos-2 port remain required before `0.1.0` is released.
   variate axis, a gated feed-forward path, tau-rule residuals, a float64 causal
   patch scaler composed with `asinh`, and single-pass quantile decoding. The
   full network and end-to-end forecasts match the pinned reference on the real
-  checkpoint to within 9e-07 relative. It is catalogued as `experimental`, not
-  `supported`, until committed golden fixtures back that claim offline.
+  checkpoint to within 9e-07 relative. It passes contract conformance and
+  numerical parity against six committed golden fixtures --- typical, short,
+  long-horizon, mixed-sign, flat, and a two-series batch/loop case --- with the
+  worst fixture using 10.8% of its tolerance budget and the flat context
+  reproducing bit-exactly. At 16 MB the checkpoint is 56x smaller than
+  TimesFM's, so it is a practical default for CPU work.
+* This port pins the raw `Toto2Model.forecast()` knobs: no block decoding, no
+  short-patch scaler fallback, and no real-space quantile cap. The upstream
+  GluonTS wrapper defaults differ on all three, so forecasts compared against
+  that path will not agree; `max_horizon` is 768, the largest horizon one
+  decode block covers, and longer requests are refused rather than silently
+  decoded through a path this port does not implement.
 * **Stub** remains an executable random-walk test fixture, not a foundation
   model.
 * **TTM** remains a registered scaffold deferred until the engine represents

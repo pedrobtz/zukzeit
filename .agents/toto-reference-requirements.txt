@@ -1,0 +1,9 @@
+# Pinned environment for generate-toto-reference.py.
+# The toto2 package itself is installed from the pinned source checkout.
+numpy==2.3.5
+torch==2.14.0
+einops==0.8.1
+jaxtyping==0.3.3
+huggingface_hub==0.36.0
+safetensors==0.7.0
+dd-unit-scaling==0.3.5

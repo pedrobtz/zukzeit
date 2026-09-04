@@ -5,11 +5,19 @@ test_that("the safe catalogue default only returns supported checkpoints", {
   supported <- zuk_models()
   all <- zuk_models(state = NULL)
 
-  expect_identical(nrow(supported), 1L)
-  expect_identical(supported$model_id, "google/timesfm-2.5-200m-pytorch")
-  expect_identical(supported$max_context, 16256L)
+  expect_identical(nrow(supported), 2L)
+  expect_setequal(
+    supported$model_id,
+    c("google/timesfm-2.5-200m-pytorch", "Datadog/Toto-2.0-4m")
+  )
+  expect_identical(
+    supported$max_context[supported$architecture == "timesfm"], 16256L
+  )
+  expect_identical(
+    supported$max_context[supported$architecture == "toto2"], 4096L
+  )
   expect_identical(nrow(all), 3L)
-  expect_setequal(unique(all$state), c("supported", "experimental", "scaffold"))
+  expect_setequal(unique(all$state), c("supported", "scaffold"))
   expect_true(all(grepl("^[0-9a-f]{40}$", all$revision)))
   expect_true(is.list(all$quantile_levels))
   expect_false(any(all$multivariate))

@@ -47,7 +47,10 @@ test_that("journey 1: plain-R panel forecasting from a data frame", {
     dates <- fc$date[fc$store == k]
     expect_identical(dates, sort(dates))
     expect_identical(length(dates), 14L)
-    expect_identical(min(dates), max(panel$date) + 1L)
+    # expect_equal, not identical: the index is extended with seq(), which
+    # returns integer-backed Dates where `+ 1L` returns double-backed ones.
+    # Storage type is seq()'s business; the instant is what the contract owns.
+    expect_equal(min(dates), max(panel$date) + 1L)
   }
   expect_true(all(is.finite(fc$.mean)))
 
