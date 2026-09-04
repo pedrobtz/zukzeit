@@ -157,7 +157,7 @@ toto_attention <- torch::nn_module(
     self$qk_dim <- as.integer(qk_dim)
     self$variate <- isTRUE(variate)
   },
-  forward = function(input) {
+  forward = function(input, mask = NULL) {
     batch <- input$shape[[1]]
     len <- input$shape[[2]]
     heads <- self$num_heads
@@ -192,7 +192,8 @@ toto_attention <- torch::nn_module(
     if (!self$variate) {
       causal <- torch::torch_tril(
         torch::torch_ones(len, len, dtype = torch::torch_bool(), device = input$device)
-      )
+      )$unsqueeze(1)$unsqueeze(1)
+      if (!is.null(mask)) causal <- causal & mask
       scores <- scores$masked_fill(!causal, -Inf)
     }
     attended <- torch::torch_matmul(torch::nnf_softmax(scores, dim = -1), value)
@@ -217,8 +218,8 @@ toto_transformer_layer <- torch::nn_module(
     self$mlp_tau <- toto_meta_scalar()
     self$epsilon <- epsilon
   },
-  forward = function(input) {
-    attended <- self$attn(toto_rms_norm(input, self$epsilon))
+  forward = function(input, mask = NULL) {
+    attended <- self$attn(toto_rms_norm(input, self$epsilon), mask)
     input <- toto_residual_add(attended, input, self$attn_tau)
     # SwiGLU: fc1 emits 2 x d_ff, split into gate and value.
     projected <- toto_unit_linear(toto_rms_norm(input, self$epsilon), self$ff1)
@@ -255,11 +256,10 @@ toto_network <- torch::nn_module(
     self$patch <- patch
     self$outputs <- outputs
   },
-  forward = function(patches, masks) {
-    # Channel layout is [scaled values, mask-as-float], hence 2 x patch in.
-    embedded <- self$patch_proj(torch::torch_cat(
-      list(patches, masks$to(dtype = patches$dtype)), dim = -1
-    ))
+  # Split from forward() so the decode path can run the stack and the head
+  # separately: next-patch alignment slices the stack's output before the head
+  # ever sees it.
+  run_layers = function(embedded, mask = NULL) {
     # Variate layers attend across series at a fixed time step, so the series
     # axis has to become the sequence axis for the duration of the layer and
     # the time axis moves into the batch. Contract v1 is univariate, so that
@@ -276,11 +276,17 @@ toto_network <- torch::nn_module(
         state <- layer(state)
         state <- state$reshape(c(batch, len, dim))
       } else {
-        state <- layer(state)
+        state <- layer(state, mask)
       }
     }
-    state <- toto_rms_norm(state, self$epsilon)
-    quantiles <- self$output_head(state)
+    toto_rms_norm(state, self$epsilon)
+  },
+  forward = function(patches, masks) {
+    # Channel layout is [scaled values, mask-as-float], hence 2 x patch in.
+    embedded <- self$patch_proj(torch::torch_cat(
+      list(patches, masks$to(dtype = patches$dtype)), dim = -1
+    ))
+    quantiles <- self$output_head(self$run_layers(embedded))
     quantiles$unflatten(-1, c(self$patch, self$outputs))
   }
 )
