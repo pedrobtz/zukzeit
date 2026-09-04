@@ -4,13 +4,13 @@
 # Python nor the Hub. Skips until the numerical port lands and fixtures exist.
 
 test_that("native TimesFM matches the reference on golden fixtures", {
-  skip_if_not(identical(Sys.getenv("TSFM_RUN_CHECKPOINT_TEST"), "true"))
+  skip_if_not(identical(Sys.getenv("ZUK_RUN_CHECKPOINT_TEST"), "true"))
   skip_if_not_installed("torch")
   skip_if_not_installed("jsonlite")
   dir <- testthat::test_path("fixtures", "timesfm")
   skip_if_not(dir.exists(dir) && length(list.files(dir, pattern = "\\.json$")) > 0,
               "No TimesFM golden fixtures yet; generate them per fixtures/README.md.")
-  record <- tsfm_catalogue_get("google/timesfm-2.5-200m-pytorch")
+  record <- zuk_catalogue_get("google/timesfm-2.5-200m-pytorch")
   skip_if_not(
     identical(record$state, "supported"),
     "TimesFM fixtures exist, but native inference has not passed the support gates."
@@ -19,7 +19,7 @@ test_that("native TimesFM matches the reference on golden fixtures", {
   # The fixtures are CPU reference outputs, so pin the handle to CPU rather than
   # inheriting the host's device resolution: on a CUDA or MPS machine the
   # default "auto" loads elsewhere and this gate cannot run.
-  model <- tsfm_pretrained(
+  model <- zuk_pretrained(
     "google/timesfm-2.5-200m-pytorch",
     revision = record$revision,
     device = "cpu"
@@ -63,8 +63,8 @@ test_that("native TimesFM matches the reference on golden fixtures", {
 })
 
 test_that("real TimesFM is conforming, deterministic, and silent", {
-  skip_if_not(identical(Sys.getenv("TSFM_RUN_CHECKPOINT_TEST"), "true"))
-  model <- tsfm_pretrained(
+  skip_if_not(identical(Sys.getenv("ZUK_RUN_CHECKPOINT_TEST"), "true"))
+  model <- zuk_pretrained(
     "google/timesfm-2.5-200m-pytorch", device = "cpu"
   )
   context <- readBin(
@@ -82,14 +82,14 @@ test_that("real TimesFM is conforming, deterministic, and silent", {
   expect_true(all(apply(multi_block, 1L, function(row) all(diff(row) >= 0))))
   device_error <- expect_error(
     model$predict_batch_fn(list(context), 2L, c(0.1, 0.5, 0.9), "cuda"),
-    class = "tsfm_error_device"
+    class = "zuk_error_device"
   )
   expect_identical(device_error$resolved_device, "cpu")
 
   # Every trained level at once, spelled the way the catalogue advertises them.
   # seq() and the config's literals differ at 0.3 and 0.7, so an exact match
   # here would silently produce NA columns.
-  advertised <- tsfm_models()$quantile_levels[[1]]
+  advertised <- zuk_models()$quantile_levels[[1]]
   all_levels <- expect_silent(model$predict_fn(context, 6L, advertised))
   expect_identical(dim(all_levels), c(6L, 9L))
   expect_true(all(is.finite(all_levels)))
@@ -99,7 +99,7 @@ test_that("real TimesFM is conforming, deterministic, and silent", {
 
   unsupported <- expect_error(
     model$predict_fn(context, 6L, c(0.05, 0.5)),
-    class = "tsfm_error_quantile_levels"
+    class = "zuk_error_quantile_levels"
   )
   expect_equal(unsupported$supported, seq(0.1, 0.9, by = 0.1))
 
@@ -114,7 +114,7 @@ test_that("real TimesFM is conforming, deterministic, and silent", {
     list(context, context), c(6L, 512L), c(0.1, 0.5, 0.9), "cpu"
   )
   expect_close_f32(mixed[[1]], solo[[1]])
-  report <- tsfm_check_architecture(
+  report <- zuk_check_architecture(
     function(config, weights) model,
     context = context,
     tolerance = 1e-4,

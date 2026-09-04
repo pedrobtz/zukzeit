@@ -1,29 +1,29 @@
 # The public architecture contract.
 #
-# tsfm is an engine: the surface below is what architecture implementations are
+# zukzeit is an engine: the surface below is what architecture implementations are
 # written against, so it is versioned and changes only with a deprecation cycle.
 # Everything else in the package (loaders, adapters, batching) is free to move.
 
-#' The tsfm architecture contract
+#' The zukzeit architecture contract
 #'
-#' `tsfm` is an inference engine: it owns the path from a pretrained checkpoint
+#' `zukzeit` is an inference engine: it owns the path from a pretrained checkpoint
 #' to predictive quantiles, and nothing above it. An *architecture* is a
 #' constructor and forward pass satisfying the contract described here.
 #'
-#' [tsfm_register_arch()] associates a constructor with an architecture key in
+#' [zuk_register_arch()] associates a constructor with an architecture key in
 #' the current R session. Registration does not add checkpoint metadata to the
 #' package-owned catalogue and does not make arbitrary model IDs available to
-#' [tsfm_pretrained()] or model-ID-based adapters. A checkpoint is exposed by
-#' those APIs only after it is curated in `tsfm`, including an immutable
+#' [zuk_pretrained()] or model-ID-based adapters. A checkpoint is exposed by
+#' those APIs only after it is curated in `zukzeit`, including an immutable
 #' revision, manifest, licence metadata, contract conformance, and numerical
-#' parity. Independently constructed [new_tsfm_model()] handles can still use
+#' parity. Independently constructed [new_zuk_model()] handles can still use
 #' the framework-neutral [forecast()] path.
 #'
-#' Verify an implementation with [tsfm_check_architecture()].
+#' Verify an implementation with [zuk_check_architecture()].
 #'
 #' @section The constructor:
 #' A constructor is a function of `(config, weights)` returning a
-#' [new_tsfm_model()]:
+#' [new_zuk_model()]:
 #'
 #' * `config` — a named list parsed from the checkpoint's `config.json`, with
 #'   `architecture`, `model_id`, and `revision` filled in by the loader.
@@ -41,7 +41,7 @@
 #' ```
 #'
 #' * `context` — a numeric vector of observed history, **oldest first**, already
-#'   truncated to `max_context` and with `NA` removed by [tsfm_run_batches()].
+#'   truncated to `max_context` and with `NA` removed by [zuk_run_batches()].
 #' * `h` — a positive integer horizon.
 #' * `quantile_levels` — a sorted numeric vector in `(0, 1)`.
 #' * Returns a numeric matrix with `h` rows and `length(quantile_levels)`
@@ -55,16 +55,16 @@
 #' * `horizons` — an integer vector of per-series horizons, aligned to
 #'   `contexts`.
 #' * `device` — a resolved device string (never `"auto"`); see
-#'   [tsfm_resolve_device()].
+#'   [zuk_resolve_device()].
 #' * Returns a list of quantile matrices, aligned to and the same length as
 #'   `contexts`.
 #'
-#' When `predict_batch_fn` is `NULL`, [tsfm_run_batches()] loops `predict_fn`.
+#' When `predict_batch_fn` is `NULL`, [zuk_run_batches()] loops `predict_fn`.
 #' When both are present they must agree: the batch path is an optimisation,
 #' never a different model.
 #'
 #' @section Invariants:
-#' These hold for every architecture and are what [tsfm_check_architecture()]
+#' These hold for every architecture and are what [zuk_check_architecture()]
 #' asserts:
 #'
 #' * **Shape.** The result is a numeric matrix, `h` by `length(quantile_levels)`.
@@ -73,7 +73,7 @@
 #'   returning.
 #' * **Finiteness.** No `NA`, `NaN`, or `Inf` for a finite, non-empty context.
 #' * **Context limit.** The model never requires more history than the
-#'   `max_context` it declares in its [new_tsfm_capabilities()].
+#'   `max_context` it declares in its [new_zuk_capabilities()].
 #' * **Empty context.** An empty context raises an error rather than returning
 #'   `NA` — silent nonsense is worse than a stop.
 #' * **Batch agreement.** If `predict_batch_fn` is supplied, it matches
@@ -88,29 +88,29 @@
 #' Native-quantile checkpoints declare their exact trained levels when those
 #' levels are fixed, and the engine validates them together with horizon and
 #' context limits before calling the architecture. See
-#' [new_tsfm_capabilities()].
+#' [new_zuk_capabilities()].
 #'
 #' @section Versioning:
-#' [new_tsfm_model()] stamps every handle with [tsfm_contract_version()]. The
+#' [new_zuk_model()] stamps every handle with [zuk_contract_version()]. The
 #' contract follows semantic versioning: the major component changes only for a
 #' breaking change to the signatures or invariants above, and never without a
 #' deprecation cycle. Architectures may record the version they were written
 #' against by passing `contract_version` explicitly.
 #'
-#' @seealso [tsfm_register_arch()], [new_tsfm_model()],
-#'   [tsfm_check_architecture()], [new_tsfm_capabilities()]
-#' @name tsfm-architecture-contract
+#' @seealso [zuk_register_arch()], [new_zuk_model()],
+#'   [zuk_check_architecture()], [new_zuk_capabilities()]
+#' @name zuk-architecture-contract
 NULL
 
 #' The architecture contract version
 #'
-#' The version of the contract described in `?`[tsfm-architecture-contract] that
-#' this installation of tsfm implements. Stamped onto every [new_tsfm_model()].
+#' The version of the contract described in `?`[zuk-architecture-contract] that
+#' this installation of zukzeit implements. Stamped onto every [new_zuk_model()].
 #'
 #' @return A [package_version].
 #' @export
 #' @examples
-#' tsfm_contract_version()
-tsfm_contract_version <- function() {
+#' zuk_contract_version()
+zuk_contract_version <- function() {
   package_version("1.0.0")
 }

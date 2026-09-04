@@ -1,5 +1,5 @@
 # Portions derived from TimesFM, Copyright 2025 Google LLC.
-# Translated and modified for R/torch by the tsfm authors.
+# Translated and modified for R/torch by the zukzeit authors.
 # Licensed under Apache-2.0; see inst/COPYRIGHTS and
 # inst/LICENSES/Apache-2.0.txt.
 
@@ -9,7 +9,7 @@ timesfm_config_value <- function(config, name, default) {
   value <- config[[name]] %||% default
   if (length(value) != 1L || !is.numeric(value) || is.na(value) ||
       !is.finite(value) || value <= 0 || value != floor(value)) {
-    tsfm_abort_checkpoint(
+    zuk_abort_checkpoint(
       "TimesFM config field {.val {name}} must be one positive integer.",
       model_id = config$model_id %||% NA_character_,
       revision = config$revision %||% NA_character_,
@@ -54,7 +54,7 @@ validate_timesfm_config <- function(config) {
   )]
   if (length(wrong) || !isTRUE(all.equal(quantiles, seq(0.1, 0.9, by = 0.1))) ||
       !isTRUE(all.equal(as.numeric(config$rms_norm_eps %||% 1e-6), 1e-6))) {
-    tsfm_abort_checkpoint(
+    zuk_abort_checkpoint(
       c(
         "This TimesFM checkpoint variant is not compatible with the native port.",
         "i" = "Only the pinned TimesFM 2.5 200M configuration is supported."
@@ -78,7 +78,7 @@ timesfm_capabilities <- function(config) {
   # At the maximum horizon of 1,024 that leaves 15,360 observations.
   context_limit <- as.integer(config$context_length %||% 16384L)
   output_patch <- as.integer(config$horizon_length %||% 128L)
-  new_tsfm_capabilities(
+  new_zuk_capabilities(
     architecture      = "timesfm",
     max_context       = context_limit - output_patch,
     max_horizon       = as.integer(config$quantile_horizon_length %||% 1024L),
@@ -103,7 +103,7 @@ timesfm_weight_map <- function(config) {
 
 timesfm_load_module_weights <- function(module, weights, config) {
   if (!is.list(weights) || is.null(names(weights))) {
-    tsfm_abort_checkpoint(
+    zuk_abort_checkpoint(
       "TimesFM requires a complete named state dict.",
       model_id = config$model_id %||% NA_character_,
       revision = config$revision %||% NA_character_,
@@ -117,7 +117,7 @@ timesfm_load_module_weights <- function(module, weights, config) {
   module_names <- names(module$state_dict())
   if (length(missing) || length(unexpected) ||
       !setequal(unname(map), module_names)) {
-    tsfm_abort_checkpoint(
+    zuk_abort_checkpoint(
       "TimesFM checkpoint tensors do not map exactly onto the native module.",
       model_id = config$model_id %||% NA_character_,
       revision = config$revision %||% NA_character_,
@@ -134,10 +134,10 @@ timesfm_load_module_weights <- function(module, weights, config) {
 }
 
 timesfm_constructor <- function(config, weights = NULL) {
-  tsfm_require_namespace("torch", reason = "It is needed for native TimesFM inference.")
+  zuk_require_namespace("torch", reason = "It is needed for native TimesFM inference.")
   validate_timesfm_config(config)
   if (is.null(weights)) {
-    tsfm_abort_checkpoint(
+    zuk_abort_checkpoint(
       "Native TimesFM construction requires checkpoint weights.",
       model_id = config$model_id %||% NA_character_,
       revision = config$revision %||% NA_character_,
@@ -158,10 +158,10 @@ timesfm_constructor <- function(config, weights = NULL) {
   predict_batch <- function(contexts, horizons, quantile_levels,
                             device = config$device) {
     if (!identical(as.character(device), as.character(config$device))) {
-      tsfm_abort_device(
+      zuk_abort_device(
         c(
           "Inference device {.val {device}} differs from the loaded TimesFM handle.",
-          "i" = "Load a separate handle with {.code tsfm_pretrained(..., device = {device})}."
+          "i" = "Load a separate handle with {.code zuk_pretrained(..., device = {device})}."
         ),
         requested_device = device,
         resolved_device = config$device
@@ -175,7 +175,7 @@ timesfm_constructor <- function(config, weights = NULL) {
     predict_batch(list(context), as.integer(h), quantile_levels, device)[[1]]
   }
 
-  new_tsfm_model(
+  new_zuk_model(
     architecture = "timesfm",
     config = config,
     capabilities = caps,

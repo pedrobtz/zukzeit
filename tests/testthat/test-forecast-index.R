@@ -13,10 +13,10 @@ panel_with_index <- function(idx) {
 
 forecast_index <- function(idx, h = 3L) {
   fc <- forecast(
-    tsfm_pretrained("stub"), panel_with_index(idx), h = h,
+    zuk_pretrained("stub"), panel_with_index(idx), h = h,
     index = "when", key = "store", target = "sales"
   )
-  on.exit(tsfm_unload("stub"), add = TRUE)
+  on.exit(zuk_unload("stub"), add = TRUE)
   fc[["when"]]
 }
 
@@ -83,8 +83,8 @@ test_that("a fable built from a calendar index reports the right interval", {
     sales = as.numeric(1:36),
     index = when, key = store
   )
-  model <- tsfm_pretrained("stub")
-  on.exit(tsfm_unload("stub"), add = TRUE)
+  model <- zuk_pretrained("stub")
+  on.exit(zuk_unload("stub"), add = TRUE)
 
   fable <- fabletools::as_fable(forecast(model, history, h = 3))
   expect_s3_class(fable[["when"]], "yearmonth")
@@ -92,8 +92,8 @@ test_that("a fable built from a calendar index reports the right interval", {
 })
 
 test_that("an index type that cannot be extended is refused, not downgraded", {
-  model <- tsfm_pretrained("stub")
-  on.exit(tsfm_unload("stub"), add = TRUE)
+  model <- zuk_pretrained("stub")
+  on.exit(zuk_unload("stub"), add = TRUE)
 
   character_index <- data.frame(
     when  = letters[1:10],
@@ -101,6 +101,6 @@ test_that("an index type that cannot be extended is refused, not downgraded", {
   )
   expect_error(
     forecast(model, character_index, h = 2, index = "when", target = "sales"),
-    class = "tsfm_error_capability"
+    class = "zuk_error_capability"
   )
 })

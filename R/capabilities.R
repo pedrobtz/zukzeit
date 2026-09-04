@@ -1,8 +1,8 @@
 #' Capability metadata for a time-series foundation model
 #'
-#' A `tsfm_capabilities` object is a small record describing what a model can
+#' A `zuk_capabilities` object is a small record describing what a model can
 #' and cannot do. It is attached to every model returned by
-#' [tsfm_pretrained()] and is used for *pre-flight validation*: a fit or
+#' [zuk_pretrained()] and is used for *pre-flight validation*: a fit or
 #' forecast call is rejected with an informative error **before** any tensor
 #' work if the request exceeds the model's declared capabilities.
 #'
@@ -20,21 +20,21 @@
 #'   outputs.
 #' @param license Character scalar, the SPDX identifier of the *weight* licence.
 #'
-#' @return A `tsfm_capabilities` object.
+#' @return A `zuk_capabilities` object.
 #' @export
 #' @examples
-#' new_tsfm_capabilities("demo", max_context = 512L)
+#' new_zuk_capabilities("demo", max_context = 512L)
 #'
 #' # A checkpoint with fixed trained quantile levels declares them, and the
 #' # engine then refuses any other level before running the forward pass.
-#' new_tsfm_capabilities(
+#' new_zuk_capabilities(
 #'   "demo",
 #'   max_context = 512L,
 #'   max_horizon = 64,
 #'   quantile_levels = c(0.1, 0.5, 0.9),
 #'   license = "Apache-2.0"
 #' )
-new_tsfm_capabilities <- function(architecture,
+new_zuk_capabilities <- function(architecture,
                                   max_context,
                                   max_horizon = Inf,
                                   quantiles = c("native", "none"),
@@ -51,7 +51,7 @@ new_tsfm_capabilities <- function(architecture,
   max_horizon <- as.numeric(max_horizon)
   quantiles <- match.arg(quantiles)
   if (length(architecture) != 1L || is.na(architecture) || !nzchar(architecture)) {
-    tsfm_abort_contract(
+    zuk_abort_contract(
       "{.arg architecture} must be one non-empty string.",
       contract = "capability declaration",
       expected = "one non-empty architecture key",
@@ -59,7 +59,7 @@ new_tsfm_capabilities <- function(architecture,
     )
   }
   if (length(max_context) != 1L || is.na(max_context) || max_context <= 0L) {
-    tsfm_abort_contract(
+    zuk_abort_contract(
       "{.arg max_context} must be one positive integer.",
       architecture = architecture,
       contract = "capability declaration",
@@ -68,7 +68,7 @@ new_tsfm_capabilities <- function(architecture,
     )
   }
   if (length(max_horizon) != 1L || is.na(max_horizon) || max_horizon <= 0) {
-    tsfm_abort_contract(
+    zuk_abort_contract(
       "{.arg max_horizon} must be positive or {.val Inf}.",
       architecture = architecture,
       contract = "capability declaration",
@@ -83,7 +83,7 @@ new_tsfm_capabilities <- function(architecture,
     quantile_levels <- sort(unique(as.numeric(quantile_levels)))
     if (anyNA(quantile_levels) || any(!is.finite(quantile_levels)) ||
         any(quantile_levels <= 0 | quantile_levels >= 1)) {
-      tsfm_abort_contract(
+      zuk_abort_contract(
         "{.arg quantile_levels} must contain unique finite values strictly between 0 and 1.",
         architecture = architecture,
         contract = "capability declaration",
@@ -93,7 +93,7 @@ new_tsfm_capabilities <- function(architecture,
     }
   }
   if (identical(quantiles, "none") && length(quantile_levels)) {
-    tsfm_abort_contract(
+    zuk_abort_contract(
       "A point-only model cannot declare supported quantile levels.",
       architecture = architecture,
       contract = "capability declaration",
@@ -119,7 +119,7 @@ new_tsfm_capabilities <- function(architecture,
     logical(1)
   )]
   if (length(malformed)) {
-    tsfm_abort_contract(
+    zuk_abort_contract(
       c(
         "Capability flags must each be one non-missing logical value.",
         "x" = "Malformed: {.val {malformed}}."
@@ -132,7 +132,7 @@ new_tsfm_capabilities <- function(architecture,
   }
   if (any(vapply(reserved, isTRUE, logical(1)))) {
     enabled <- names(reserved)[vapply(reserved, isTRUE, logical(1))]
-    tsfm_abort_contract(
+    zuk_abort_contract(
       c(
         "Contract v1 has no execution channel for the declared capability.",
         "x" = "Disable: {.val {enabled}}."
@@ -159,33 +159,33 @@ new_tsfm_capabilities <- function(architecture,
       fine_tunable      = FALSE,
       license           = as.character(license)
     ),
-    class = "tsfm_capabilities"
+    class = "zuk_capabilities"
   )
 }
 
 #' Report the capabilities of a model
 #'
-#' @param x A `tsfm_model` (or another object carrying capability metadata).
+#' @param x A `zuk_model` (or another object carrying capability metadata).
 #' @param ... Unused, for future methods.
-#' @return A [new_tsfm_capabilities()] object.
+#' @return A [new_zuk_capabilities()] object.
 #' @export
 #' @examples
-#' model <- tsfm_pretrained("stub")
-#' tsfm_capabilities(model)
+#' model <- zuk_pretrained("stub")
+#' zuk_capabilities(model)
 #'
-#' tsfm_capabilities(model)$max_context
-#' tsfm_unload("stub")
-tsfm_capabilities <- function(x, ...) {
-  UseMethod("tsfm_capabilities")
+#' zuk_capabilities(model)$max_context
+#' zuk_unload("stub")
+zuk_capabilities <- function(x, ...) {
+  UseMethod("zuk_capabilities")
 }
 
 #' @export
-tsfm_capabilities.tsfm_capabilities <- function(x, ...) {
+zuk_capabilities.zuk_capabilities <- function(x, ...) {
   x
 }
 
 #' @export
-format.tsfm_capabilities <- function(x, ...) {
+format.zuk_capabilities <- function(x, ...) {
   yn <- function(v) if (isTRUE(v)) "TRUE" else "FALSE"
   levels <- if (is.null(x$quantile_levels)) {
     "arbitrary"
@@ -195,7 +195,7 @@ format.tsfm_capabilities <- function(x, ...) {
     paste(x$quantile_levels, collapse = ", ")
   }
   c(
-    "<tsfm_capabilities>",
+    "<zuk_capabilities>",
     sprintf("  architecture:      %s", x$architecture),
     sprintf("  max_context:       %s        max_horizon: %s", x$max_context, x$max_horizon),
     sprintf("  quantiles:         %s        levels: %s", x$quantiles, levels),
@@ -209,7 +209,7 @@ format.tsfm_capabilities <- function(x, ...) {
 }
 
 #' @export
-print.tsfm_capabilities <- function(x, ...) {
+print.zuk_capabilities <- function(x, ...) {
   cat(format(x, ...), sep = "\n")
   cat("\n")
   invisible(x)
@@ -224,7 +224,7 @@ check_context_length <- function(caps, context_length,
                                  revision = NA_character_,
                                  call = rlang::caller_env()) {
   if (!is.null(context_length) && context_length > caps$max_context) {
-    tsfm_abort_context_length(
+    zuk_abort_context_length(
       c(
         "Requested context length exceeds the model's capability.",
         "x" = "Requested {.val {context_length}} observations of context.",
@@ -247,7 +247,7 @@ check_horizon <- function(caps, h,
   valid <- is.numeric(h) && length(h) > 0L && !anyNA(h) && all(is.finite(h)) &&
     all(h > 0) && all(h == floor(h)) && all(h <= .Machine$integer.max)
   if (!valid) {
-    tsfm_abort_capability(
+    zuk_abort_capability(
       "Forecast horizons must be positive integers.",
       model_id = model_id,
       revision = revision,
@@ -258,7 +258,7 @@ check_horizon <- function(caps, h,
     )
   }
   if (any(h > caps$max_horizon)) {
-    tsfm_abort_capability(
+    zuk_abort_capability(
       c(
         "Requested horizon exceeds the model's capability.",
         "x" = "Requested a maximum horizon of {.val {max(h)}}.",
@@ -283,7 +283,7 @@ check_horizon <- function(caps, h,
 # match is tolerant and the engine carries the matched supported value forward
 # rather than whichever spelling the caller happened to use. Returns positions
 # into `supported`, `NA` where a level has no counterpart.
-tsfm_match_quantile_levels <- function(levels, supported) {
+zuk_match_quantile_levels <- function(levels, supported) {
   vapply(
     as.numeric(levels),
     function(level) {
@@ -299,7 +299,7 @@ check_quantile_levels <- function(caps, quantile_levels,
                                   revision = NA_character_,
                                   call = rlang::caller_env()) {
   if (!is.numeric(quantile_levels)) {
-    tsfm_abort_quantile_levels(
+    zuk_abort_quantile_levels(
       "Quantile levels must be supplied as a numeric vector.",
       model_id = model_id,
       revision = revision,
@@ -312,7 +312,7 @@ check_quantile_levels <- function(caps, quantile_levels,
   valid <- length(levels) > 0L && !anyNA(levels) && all(is.finite(levels)) &&
     all(levels > 0 & levels < 1)
   if (!valid || anyDuplicated(levels)) {
-    tsfm_abort_quantile_levels(
+    zuk_abort_quantile_levels(
       "Quantile levels must be unique finite probabilities strictly between 0 and 1.",
       model_id = model_id,
       revision = revision,
@@ -322,7 +322,7 @@ check_quantile_levels <- function(caps, quantile_levels,
     )
   }
   if (identical(caps$quantiles, "none")) {
-    tsfm_abort_quantile_levels(
+    zuk_abort_quantile_levels(
       "This model does not emit predictive quantiles.",
       model_id = model_id,
       revision = revision,
@@ -333,9 +333,9 @@ check_quantile_levels <- function(caps, quantile_levels,
   }
   supported <- caps$quantile_levels
   if (!is.null(supported)) {
-    matched <- tsfm_match_quantile_levels(levels, supported)
+    matched <- zuk_match_quantile_levels(levels, supported)
     if (anyNA(matched)) {
-      tsfm_abort_quantile_levels(
+      zuk_abort_quantile_levels(
         c(
           "The checkpoint does not emit every requested quantile level.",
           "x" = "Unsupported: {.val {levels[is.na(matched)]}}.",
@@ -352,7 +352,7 @@ check_quantile_levels <- function(caps, quantile_levels,
     # output channel never have to re-derive a match the engine already made.
     levels <- supported[matched]
     if (anyDuplicated(levels)) {
-      tsfm_abort_quantile_levels(
+      zuk_abort_quantile_levels(
         c(
           "Several requested quantile levels resolve to the same trained level.",
           "x" = "Duplicated after matching: {.val {unique(levels[duplicated(levels)])}}.",
@@ -388,7 +388,7 @@ check_capabilities <- function(caps,
   flag(static_covariates, caps$static_covariates, "Static covariates")
 
   if (length(problems)) {
-    tsfm_abort_capability(
+    zuk_abort_capability(
       c(
         "The request exceeds architecture {.val {caps$architecture}}'s capabilities.",
         stats::setNames(problems, rep("x", length(problems)))

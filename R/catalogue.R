@@ -4,7 +4,7 @@
 # only dynamic column and is computed exclusively through local-only hfhub
 # probes; listing models never fetches a config or a weight file.
 
-tsfm_catalogue_records <- function() {
+zuk_catalogue_records <- function() {
   list(
     list(
       model_id = "google/timesfm-2.5-200m-pytorch",
@@ -39,7 +39,7 @@ tsfm_catalogue_records <- function() {
   )
 }
 
-tsfm_probe_cached_file <- function(model_id, revision, file) {
+zuk_probe_cached_file <- function(model_id, revision, file) {
   isTRUE(tryCatch(
     {
       hfhub::hub_download(
@@ -54,7 +54,7 @@ tsfm_probe_cached_file <- function(model_id, revision, file) {
   ))
 }
 
-tsfm_manifest_cached <- function(record, probe = tsfm_probe_cached_file) {
+zuk_manifest_cached <- function(record, probe = zuk_probe_cached_file) {
   manifest <- record$manifest
   if (is.null(manifest)) {
     return(NA)
@@ -66,8 +66,8 @@ tsfm_manifest_cached <- function(record, probe = tsfm_probe_cached_file) {
   ))
 }
 
-tsfm_catalogue_frame <- function(records = tsfm_catalogue_records(),
-                                 probe = tsfm_probe_cached_file) {
+zuk_catalogue_frame <- function(records = zuk_catalogue_records(),
+                                 probe = zuk_probe_cached_file) {
   if (!length(records)) {
     out <- data.frame(
       model_id = character(),
@@ -103,7 +103,7 @@ tsfm_catalogue_frame <- function(records = tsfm_catalogue_records(),
     future_covariates = vapply(records, `[[`, logical(1), "future_covariates"),
     n_params = vapply(records, `[[`, numeric(1), "n_params"),
     size_bytes = vapply(records, `[[`, numeric(1), "size_bytes"),
-    cached = vapply(records, tsfm_manifest_cached, logical(1), probe = probe),
+    cached = vapply(records, zuk_manifest_cached, logical(1), probe = probe),
     license = vapply(records, `[[`, character(1), "license"),
     stringsAsFactors = FALSE
   )
@@ -130,20 +130,20 @@ tsfm_catalogue_frame <- function(records = tsfm_catalogue_records(),
 #'   been defined.
 #' @export
 #' @examples
-#' tsfm_models()
-tsfm_models <- function(state = "supported") {
+#' zuk_models()
+zuk_models <- function(state = "supported") {
   allowed <- c("supported", "experimental", "scaffold")
   if (!is.null(state) &&
       (length(state) != 1L || !is.character(state) || is.na(state) ||
        !state %in% allowed)) {
-    tsfm_abort_capability(
+    zuk_abort_capability(
       "{.arg state} must be {.val supported}, {.val experimental}, {.val scaffold}, or {.code NULL}.",
       capability = "catalogue_state",
       requested = state,
       supported = allowed
     )
   }
-  out <- tsfm_catalogue_frame()
+  out <- zuk_catalogue_frame()
   if (!is.null(state)) {
     out <- out[out$state == state, , drop = FALSE]
   }
@@ -151,8 +151,8 @@ tsfm_models <- function(state = "supported") {
   out
 }
 
-tsfm_catalogue_get <- function(model_id) {
-  records <- tsfm_catalogue_records()
+zuk_catalogue_get <- function(model_id) {
+  records <- zuk_catalogue_records()
   matched <- vapply(
     records,
     function(record) identical(record$model_id, as.character(model_id)),

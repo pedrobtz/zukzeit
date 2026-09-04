@@ -16,7 +16,7 @@ TSFM(
 \arguments{
 \item{formula}{A model formula naming the response, for example \code{value}.}
 
-\item{model_id}{Checkpoint id, as listed by \code{\link[=tsfm_models]{tsfm_models()}}. Use \code{"stub"} for
+\item{model_id}{Checkpoint id, as listed by \code{\link[=zuk_models]{zuk_models()}}. Use \code{"stub"} for
 the weight-free test fixture.}
 
 \item{revision}{\code{NULL} for the catalogue's immutable revision, or that exact
@@ -25,9 +25,9 @@ revision string.}
 \item{quantile_levels}{Quantile levels to forecast; defaults to
 \code{c(0.1, 0.5, 0.9)}.}
 
-\item{device}{Device requested for construction; see \code{\link[=tsfm_resolve_device]{tsfm_resolve_device()}}.}
+\item{device}{Device requested for construction; see \code{\link[=zuk_resolve_device]{zuk_resolve_device()}}.}
 
-\item{...}{Further load-affecting arguments passed to \code{\link[=tsfm_pretrained]{tsfm_pretrained()}}.}
+\item{...}{Further load-affecting arguments passed to \code{\link[=zuk_pretrained]{zuk_pretrained()}}.}
 }
 \value{
 A \code{fabletools} model definition.
@@ -42,7 +42,7 @@ model is zero-shot: "training" binds the observed history for a key, and
 
 fabletools evaluates one key at a time, so \code{TSFM()} runs the engine once per
 series. The checkpoint itself is loaded once and reused from the bounded
-resident cache (see \code{\link[=tsfm_pretrained]{tsfm_pretrained()}} and \code{\link[=tsfm_cache_status]{tsfm_cache_status()}}), but the
+resident cache (see \code{\link[=zuk_pretrained]{zuk_pretrained()}} and \code{\link[=zuk_cache_status]{zuk_cache_status()}}), but the
 forward passes are not batched across series. For a wide panel, prefer the
 batched route:
 
@@ -55,7 +55,7 @@ batched route:
 Every route carries the same predictive distribution, but they label the
 point forecast differently. \code{fabletools} derives \code{.mean} from the
 distribution, so a \code{TSFM()} fable reports the distribution's \strong{mean};
-\code{\link[=forecast.tsfm_model]{forecast.tsfm_model()}} and \code{\link[fabletools:as_fable]{fabletools::as_fable()}} report the engine's
+\code{\link[=forecast.zuk_model]{forecast.zuk_model()}} and \code{\link[fabletools:as_fable]{fabletools::as_fable()}} report the engine's
 exactly evaluated \strong{median}. With few quantile levels the two diverge on a
 skewed forecast. \code{median()} of the distribution recovers the engine's point
 forecast on any route:
@@ -68,11 +68,11 @@ median(fc$value)   # the engine's point forecast
 \examples{
 \dontshow{if (requireNamespace("fabletools", quietly = TRUE) && requireNamespace("tsibble", quietly = TRUE)) withAutoprint(\{ # examplesIf}
 history <- tsibble::tsibble(time = 1:12, value = cumsum(1:12), index = time)
-fits <- fabletools::model(history, tsfm = TSFM(value, model_id = "stub"))
+fits <- fabletools::model(history, zukzeit = TSFM(value, model_id = "stub"))
 fabletools::forecast(fits, h = 3)
-tsfm_unload("stub")
+zuk_unload("stub")
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=forecast.tsfm_model]{forecast.tsfm_model()}} for the batched panel route.
+\code{\link[=forecast.zuk_model]{forecast.zuk_model()}} for the batched panel route.
 }

@@ -6,7 +6,7 @@
 # a future native port after contract v2 can represent Chronos-2 inputs.
 
 chronos2_capabilities <- function(config) {
-  new_tsfm_capabilities(
+  new_zuk_capabilities(
     architecture      = "chronos2",
     max_context       = as.integer(config$max_context %||% 8192L),
     quantiles         = "native",
@@ -26,7 +26,7 @@ chronos2_capabilities <- function(config) {
 # matrix. brulee's precise argument names are resolved defensively so this keeps
 # working across brulee versions; validated in the brulee-gated tests.
 chronos2_forecast_series <- function(context, h, quantile_levels, config) {
-  tsfm_require_namespace(
+  zuk_require_namespace(
     "brulee",
     reason = "to inspect the unregistered Chronos-2 reference adapter."
   )
@@ -65,7 +65,7 @@ chronos2_constructor <- function(config, weights = NULL) {
   predict_fn <- function(context, h, quantile_levels) {
     chronos2_forecast_series(context, h, quantile_levels, config)
   }
-  new_tsfm_model(
+  new_zuk_model(
     architecture = "chronos2",
     config       = config,
     capabilities = caps,

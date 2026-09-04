@@ -5,7 +5,7 @@
 ## Decision
 
 **Go.** The hard TimesFM 2.5 transformer path can be expressed with the R
-`torch`/LibTorch surface used by `tsfm`. A reduced deterministic block agrees
+`torch`/LibTorch surface used by `zukzeit`. A reduced deterministic block agrees
 with the pinned official PyTorch implementation to less than `1e-6`, including
 RMS normalization, fused QKV, rotary embeddings, normalized attention,
 per-dimension query scaling, the feed-forward residual path, and the continuous

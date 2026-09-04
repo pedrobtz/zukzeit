@@ -1,5 +1,5 @@
 # Portions derived from TimesFM, Copyright 2025 Google LLC.
-# Translated and modified for R/torch by the tsfm authors.
+# Translated and modified for R/torch by the zukzeit authors.
 # Licensed under Apache-2.0; see inst/COPYRIGHTS and
 # inst/LICENSES/Apache-2.0.txt.
 
@@ -134,7 +134,7 @@ timesfm_decode <- function(module, horizon, inputs, masks, config,
   if (decode_steps > 0L) {
     patches_per_output <- point_horizon %/% patch
     for (step in seq_len(decode_steps)) {
-      tsfm_check_user_interrupt()
+      zuk_check_user_interrupt()
       new_input <- last_output$reshape(c(batch, patches_per_output, patch))
       new_mask <- torch::torch_zeros_like(new_input, dtype = torch::torch_bool())
       new_stats <- timesfm_running_patch_stats(new_input, new_mask, current)
@@ -210,7 +210,7 @@ timesfm_prepare_batch <- function(contexts, horizons, config, device) {
   patch <- as.integer(config$patch_length)
   usable <- vapply(horizons, timesfm_usable_context, integer(1), config = config)
   if (any(usable <= 0L)) {
-    tsfm_abort_capability(
+    zuk_abort_capability(
       "Requested horizon leaves no room for context inside the checkpoint's position budget.",
       model_id = config$model_id %||% NA_character_,
       revision = config$revision %||% NA_character_,
@@ -241,7 +241,7 @@ timesfm_predict_batch <- function(module, contexts, horizons, quantile_levels,
   if (!length(contexts)) return(list())
   horizons <- as.integer(horizons)
   if (length(horizons) != length(contexts)) {
-    tsfm_abort_capability(
+    zuk_abort_capability(
       "TimesFM needs one horizon per context.",
       model_id = config$model_id %||% NA_character_,
       revision = config$revision %||% NA_character_,
@@ -251,7 +251,7 @@ timesfm_predict_batch <- function(module, contexts, horizons, quantile_levels,
     )
   }
   if (any(vapply(contexts, length, integer(1)) == 0L)) {
-    tsfm_abort_capability(
+    zuk_abort_capability(
       "TimesFM requires at least one observed context value.",
       model_id = config$model_id %||% NA_character_,
       revision = config$revision %||% NA_character_,
@@ -264,9 +264,9 @@ timesfm_predict_batch <- function(module, contexts, horizons, quantile_levels,
   # typed refusal rather than an NA column the engine later reports as a bug.
   layout <- timesfm_channel_layout(config)
   trained <- as.numeric(config$quantiles)
-  matched <- tsfm_match_quantile_levels(quantile_levels, trained)
+  matched <- zuk_match_quantile_levels(quantile_levels, trained)
   if (anyNA(matched)) {
-    tsfm_abort_quantile_levels(
+    zuk_abort_quantile_levels(
       c(
         "TimesFM cannot emit every requested quantile level.",
         "x" = "Unsupported: {.val {as.numeric(quantile_levels)[is.na(matched)]}}.",

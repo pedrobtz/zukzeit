@@ -8,9 +8,9 @@ test_that("fit -> predict -> yardstick::rmse works on the stub", {
   train <- data.frame(store = "a", t = 1:40, y = cumsum(rnorm(40)) + 100)
   future <- data.frame(store = "a", t = 41:45, y = cumsum(rnorm(5)) + 100)
 
-  model <- tsfm_pretrained("stub")
-  fit <- tsfm_fit(y ~ 1, data = train, model = model, index = "t", id = "store")
-  expect_s3_class(fit, "tsfm_fit")
+  model <- zuk_pretrained("stub")
+  fit <- zuk_fit(y ~ 1, data = train, model = model, index = "t", id = "store")
+  expect_s3_class(fit, "zuk_fit")
 
   preds <- predict(fit, new_data = future)
   expect_identical(nrow(preds), 5L)
@@ -36,8 +36,8 @@ test_that("predictions are row-aligned to new_data across multiple series", {
     t     = c(21L, 21L, 22L, 22L)
   )
 
-  model <- tsfm_pretrained("stub")
-  fit <- tsfm_fit(y ~ 1, data = train, model = model, index = "t", id = "store")
+  model <- zuk_pretrained("stub")
+  fit <- zuk_fit(y ~ 1, data = train, model = model, index = "t", id = "store")
   preds <- predict(fit, new_data = future)
 
   expect_identical(nrow(preds), nrow(future))
@@ -53,8 +53,8 @@ test_that("unknown series in new_data are rejected", {
   skip_if_not_installed("distributional")
 
   train <- data.frame(store = "a", t = 1:10, y = as.numeric(1:10))
-  model <- tsfm_pretrained("stub")
-  fit <- tsfm_fit(y ~ 1, data = train, model = model, index = "t", id = "store")
+  model <- zuk_pretrained("stub")
+  fit <- zuk_fit(y ~ 1, data = train, model = model, index = "t", id = "store")
   future <- data.frame(store = "z", t = 11:12)
   expect_error(predict(fit, new_data = future), "No fitted history")
 })
@@ -69,9 +69,9 @@ test_that("a factor series id selects history by label, not by level code", {
     data.frame(store = "b", t = 1:30, y = rep(50, 30)),
     data.frame(store = "c", t = 1:30, y = rep(900, 30))
   )
-  model <- tsfm_pretrained("stub")
-  on.exit(tsfm_unload("stub"), add = TRUE)
-  fit <- tsfm_fit(y ~ ., data = train, model = model, index = "t", id = "store")
+  model <- zuk_pretrained("stub")
+  on.exit(zuk_unload("stub"), add = TRUE)
+  fit <- zuk_fit(y ~ ., data = train, model = model, index = "t", id = "store")
 
   # A single-level factor -- what droplevels() or subset() leaves behind --
   # previously resolved to level code 1, i.e. series "a".
@@ -100,9 +100,9 @@ test_that("a factor id at fit time is keyed the same way as at predict time", {
     t     = rep(1:30, 2),
     y     = c(rep(100, 30), rep(7, 30))
   )
-  model <- tsfm_pretrained("stub")
-  on.exit(tsfm_unload("stub"), add = TRUE)
-  fit <- tsfm_fit(y ~ ., data = train, model = model, index = "t", id = "store")
+  model <- zuk_pretrained("stub")
+  on.exit(zuk_unload("stub"), add = TRUE)
+  fit <- zuk_fit(y ~ ., data = train, model = model, index = "t", id = "store")
 
   expect_identical(names(fit$histories), c("a", "b"))
   expect_equal(
@@ -117,11 +117,11 @@ test_that("every requested quantile level gets its own prediction column", {
   skip_if_not_installed("distributional")
 
   train <- data.frame(store = "a", t = 1:40, y = as.numeric(1:40))
-  model <- tsfm_pretrained("stub")
-  on.exit(tsfm_unload("stub"), add = TRUE)
+  model <- zuk_pretrained("stub")
+  on.exit(zuk_unload("stub"), add = TRUE)
 
   # Whole percents keep the familiar two-digit names.
-  whole <- tsfm_fit(y ~ ., data = train, model = model, index = "t", id = "store",
+  whole <- zuk_fit(y ~ ., data = train, model = model, index = "t", id = "store",
                     quantile_levels = c(0.1, 0.5, 0.9))
   whole_cols <- names(predict(whole, data.frame(store = "a", t = 41L)))
   expect_identical(
@@ -132,7 +132,7 @@ test_that("every requested quantile level gets its own prediction column", {
   # Sub-percent levels used to collide: 0.02 and 0.025 both rounded to
   # `.pred_q02`, so one silently overwrote the other.
   levels <- c(0.02, 0.025, 0.5, 0.975, 0.98)
-  fine <- tsfm_fit(y ~ ., data = train, model = model, index = "t", id = "store",
+  fine <- zuk_fit(y ~ ., data = train, model = model, index = "t", id = "store",
                    quantile_levels = levels)
   fine_pred <- predict(fine, data.frame(store = "a", t = 41L))
   quantile_cols <- grep("^\\.pred_q", names(fine_pred), value = TRUE)

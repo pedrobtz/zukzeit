@@ -1,6 +1,6 @@
 test_that("all built-in architectures are registered", {
-  expect_setequal(tsfm_registry_archs(), c("stub", "ttm", "timesfm"))
-  expect_false(tsfm_registry_has("chronos2"))
+  expect_setequal(zuk_registry_archs(), c("stub", "ttm", "timesfm"))
+  expect_false(zuk_registry_has("chronos2"))
 })
 
 test_that("architecture keys are normalised from Hub config conventions", {
@@ -24,8 +24,8 @@ test_that("Chronos-2 is rejected before network or adapter work", {
   expect_false(is_chronos2_id("google/timesfm-2.5-200m-pytorch"))
 
   expect_error(
-    tsfm_pretrained("amazon/chronos-2"),
-    "not a supported model in tsfm 0.1.0",
+    zuk_pretrained("amazon/chronos-2"),
+    "not a supported model in zukzeit 0.1.0",
     fixed = TRUE
   )
 })
@@ -33,7 +33,7 @@ test_that("Chronos-2 is rejected before network or adapter work", {
 test_that("TTM scaffold advertises capabilities but defers the forward pass", {
   model <- ttm_constructor(list(context_length = 1536L))
   expect_identical(model$architecture, "ttm")
-  caps <- tsfm_capabilities(model)
+  caps <- zuk_capabilities(model)
   expect_identical(caps$max_context, 1536L)
   expect_identical(caps$quantiles, "none")
   expect_false(caps$multivariate)
@@ -114,19 +114,19 @@ test_that("a horizon leaving no room for context is refused", {
   config$context_length <- 256L
   error <- expect_error(
     timesfm_prepare_batch(list(1:10), 256L, config, "cpu"),
-    class = "tsfm_error_capability"
+    class = "zuk_error_capability"
   )
   expect_identical(error$capability, "horizon")
 })
 
 test_that("TimesFM rejects missing weights and incompatible variants", {
   config <- timesfm_test_config()
-  expect_error(timesfm_constructor(config), class = "tsfm_error_checkpoint")
+  expect_error(timesfm_constructor(config), class = "zuk_error_checkpoint")
 
   config$hidden_size <- 64L
   error <- expect_error(
     validate_timesfm_config(config),
-    class = "tsfm_error_checkpoint"
+    class = "zuk_error_checkpoint"
   )
   expect_identical(error$tensor, "config.json")
 })

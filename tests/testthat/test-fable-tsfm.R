@@ -22,11 +22,11 @@ fable_panel <- function(n = 24L, keys = c("a", "b")) {
 
 test_that("TSFM composes inside fabletools::model() and forecasts a fable", {
   skip_if_no_fable()
-  fits <- fabletools::model(fable_panel(), tsfm = TSFM(v, model_id = "stub"))
+  fits <- fabletools::model(fable_panel(), zukzeit = TSFM(v, model_id = "stub"))
 
   expect_s3_class(fits, "mdl_df")
   expect_identical(nrow(fits), 2L)
-  expect_true("tsfm" %in% names(fits))
+  expect_true("zukzeit" %in% names(fits))
 
   fc <- fabletools::forecast(fits, h = 6L)
   expect_s3_class(fc, "fbl_ts")
@@ -40,9 +40,9 @@ test_that("the fitted model carries checkpoint and column identity", {
   skip_if_no_fable()
   fits <- fabletools::model(
     fable_panel(),
-    tsfm = TSFM(v, model_id = "stub", quantile_levels = c(0.2, 0.5, 0.8))
+    zukzeit = TSFM(v, model_id = "stub", quantile_levels = c(0.2, 0.5, 0.8))
   )
-  fit <- fits$tsfm[[1]]$fit
+  fit <- fits$zukzeit[[1]]$fit
 
   expect_s3_class(fit, "model_tsfm")
   expect_identical(fit$model$model_id, "stub")
@@ -62,16 +62,16 @@ test_that("an explicit revision is carried onto the handle", {
   skip_if_no_fable()
   fits <- fabletools::model(
     fable_panel(keys = "a"),
-    tsfm = TSFM(v, model_id = "stub", revision = "abc123")
+    zukzeit = TSFM(v, model_id = "stub", revision = "abc123")
   )
-  expect_identical(fits$tsfm[[1]]$fit$model$revision, "abc123")
+  expect_identical(fits$zukzeit[[1]]$fit$model$revision, "abc123")
 })
 
 test_that("TSFM binds each key's own history", {
   skip_if_no_fable()
   panel <- fable_panel()
-  fits <- fabletools::model(panel, tsfm = TSFM(v, model_id = "stub"))
-  histories <- lapply(fits$tsfm, function(m) m$fit$history)
+  fits <- fabletools::model(panel, zukzeit = TSFM(v, model_id = "stub"))
+  histories <- lapply(fits$zukzeit, function(m) m$fit$history)
 
   expect_length(histories, 2L)
   expect_false(isTRUE(all.equal(histories[[1]], histories[[2]])))
@@ -85,15 +85,15 @@ test_that("keys share one constructed handle rather than reloading per key", {
   skip_if_no_fable()
   # fabletools trains per key, so without resident reuse a wide panel would
   # rebuild the checkpoint once per series. Every fit must be the same handle.
-  old <- options(tsfm.max_loaded_models = 1L)
+  old <- options(zuk.max_loaded_models = 1L)
   on.exit(options(old), add = TRUE)
-  tsfm_unload()
+  zuk_unload()
 
   fits <- fabletools::model(
     fable_panel(keys = c("a", "b", "c")),
-    tsfm = TSFM(v, model_id = "stub")
+    zukzeit = TSFM(v, model_id = "stub")
   )
-  handles <- lapply(fits$tsfm, function(m) m$fit$model)
+  handles <- lapply(fits$zukzeit, function(m) m$fit$model)
   expect_length(handles, 3L)
   expect_true(identical(handles[[1]], handles[[2]]))
   expect_true(identical(handles[[2]], handles[[3]]))
@@ -103,7 +103,7 @@ test_that("a TSFM fable flows into fabletools::accuracy()", {
   skip_if_no_fable()
   panel <- fable_panel(n = 30L, keys = "a")
   train <- utils::head(panel, 24L)
-  fits <- fabletools::model(train, tsfm = TSFM(v, model_id = "stub"))
+  fits <- fabletools::model(train, zukzeit = TSFM(v, model_id = "stub"))
   fc <- fabletools::forecast(fits, h = 6L)
 
   acc <- fabletools::accuracy(fc, panel)
@@ -115,7 +115,7 @@ test_that("a TSFM fable flows into fabletools::accuracy()", {
 
 test_that("a zero-shot fit reports no in-sample values rather than inventing them", {
   skip_if_no_fable()
-  fits <- fabletools::model(fable_panel(keys = "a"), tsfm = TSFM(v, model_id = "stub"))
+  fits <- fabletools::model(fable_panel(keys = "a"), zukzeit = TSFM(v, model_id = "stub"))
   aug <- fabletools::augment(fits)
   expect_true(all(is.na(aug$.fitted)))
   expect_true(all(is.na(aug$.resid)))
@@ -131,14 +131,14 @@ test_that("TSFM raises typed conditions for a bad response or levels", {
   # errors (see below), so the mable is not where the class survives.
   expect_error(
     train_tsfm(chr, specials = NULL, model_id = "stub"),
-    class = "tsfm_error_capability"
+    class = "zuk_error_capability"
   )
   expect_error(
     train_tsfm(
       fable_panel(keys = "a"),
       specials = NULL, model_id = "stub", quantile_levels = c(0, 0.5)
     ),
-    class = "tsfm_error_quantile_levels"
+    class = "zuk_error_quantile_levels"
   )
 })
 
@@ -152,10 +152,10 @@ test_that("a failing key degrades to a null model rather than killing the panel"
     index = "t"
   )
   expect_warning(
-    fits <- fabletools::model(chr, tsfm = TSFM(v, model_id = "stub")),
+    fits <- fabletools::model(chr, zukzeit = TSFM(v, model_id = "stub")),
     "must be numeric"
   )
-  expect_true(fabletools::is_null_model(fits$tsfm[[1]]))
+  expect_true(fabletools::is_null_model(fits$zukzeit[[1]]))
 })
 
 test_that("the batched panel route and TSFM agree on the same history", {
@@ -163,10 +163,10 @@ test_that("the batched panel route and TSFM agree on the same history", {
   panel <- fable_panel(keys = "a")
   levels <- c(0.1, 0.5, 0.9)
 
-  model <- tsfm_pretrained("stub")
+  model <- zuk_pretrained("stub")
   batched <- forecast(model, panel, h = 6L, quantile_levels = levels)
   composed <- fabletools::forecast(
-    fabletools::model(panel, tsfm = TSFM(v, model_id = "stub",
+    fabletools::model(panel, zukzeit = TSFM(v, model_id = "stub",
                                          quantile_levels = levels)),
     h = 6L
   )

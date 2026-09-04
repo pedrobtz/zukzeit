@@ -1,5 +1,5 @@
 # Portions derived from TimesFM, Copyright 2025 Google LLC.
-# Translated and modified for R/torch by the tsfm authors.
+# Translated and modified for R/torch by the zukzeit authors.
 # Licensed under Apache-2.0; see inst/COPYRIGHTS and
 # inst/LICENSES/Apache-2.0.txt.
 
@@ -82,7 +82,7 @@ validate_timesfm_state_metadata <- function(metadata, config,
   missing <- setdiff(names(expected), names(metadata))
   extra <- setdiff(names(metadata), names(expected))
   if (length(missing) || length(extra)) {
-    tsfm_abort_checkpoint(
+    zuk_abort_checkpoint(
       c(
         "The TimesFM checkpoint tensor names do not match the pinned layout.",
         "x" = "Missing: {.val {missing}}.",
@@ -99,7 +99,7 @@ validate_timesfm_state_metadata <- function(metadata, config,
     expected_shape <- as.integer(expected[[name]])
     if (!identical(actual_shape, expected_shape) ||
         !identical(metadata[[name]]$dtype, "F32")) {
-      tsfm_abort_checkpoint(
+      zuk_abort_checkpoint(
         "Tensor {.val {name}} is incompatible with the pinned TimesFM layout.",
         model_id = model_id,
         revision = revision,

@@ -59,7 +59,7 @@ jobs:
         run: Rscript -e 'torch::install_torch()'
         shell: bash
 
-      # Note that no job here sets TSFM_RUN_CHECKPOINT_TEST. R CMD check stays
+      # Note that no job here sets ZUK_RUN_CHECKPOINT_TEST. R CMD check stays
       # network-free and CRAN-shaped on every configuration; the checkpoint gate
       # is the separate `parity` job below, so a failed 925 MB download can never
       # be mistaken for a failed package check.
@@ -113,9 +113,9 @@ jobs:
       # Explicit, and before the tests, so a Hub outage or a size mismatch fails
       # here with a download error instead of surfacing as a parity failure.
       - name: Prefetch the checkpoint
-        run: Rscript -e 'pkgload::load_all("."); tsfm_download("google/timesfm-2.5-200m-pytorch")'
+        run: Rscript -e 'pkgload::load_all("."); zuk_download("google/timesfm-2.5-200m-pytorch")'
 
       - name: Run the checkpoint-gated suite
         env:
-          TSFM_RUN_CHECKPOINT_TEST: 'true'
+          ZUK_RUN_CHECKPOINT_TEST: 'true'
         run: Rscript -e 'pkgload::load_all("."); testthat::test_local(".", stop_on_failure = TRUE)'

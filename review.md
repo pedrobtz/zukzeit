@@ -1,4 +1,4 @@
-# `tsfm` implementation review — Stages 0–3
+# `zukzeit` implementation review — Stages 0–3
 
 *Reviewed 2026-08-13 against the working tree at commit `1200b0e` plus the
 uncommitted Stage 3 delta. **All findings below were fixed the same day**; see
@@ -33,18 +33,18 @@ surfaced that static review had missed — both recorded under
 The engine design is genuinely good, and unusually disciplined for a package at
 this stage. Three things stand out as better than typical:
 
-1. **The contract is real, not aspirational.** `?tsfm-architecture-contract` is
-   prose, `tsfm_check_architecture()` is the executable form of the same
-   document, and `new_tsfm_capabilities()` *refuses* to construct a capability
+1. **The contract is real, not aspirational.** `?zuk-architecture-contract` is
+   prose, `zuk_check_architecture()` is the executable form of the same
+   document, and `new_zuk_capabilities()` *refuses* to construct a capability
    record that declares a channel contract v1 cannot carry
    ([R/capabilities.R:101-113](R/capabilities.R#L101-L113)). Capability metadata
    cannot drift ahead of the implementation because the constructor rejects the
    drift.
 2. **The error taxonomy is consistently applied.** Every abort in the package
-   goes through `tsfm_abort()`, which `stopifnot()`s exactly one policy parent
+   goes through `zuk_abort()`, which `stopifnot()`s exactly one policy parent
    ([R/conditions.R:32-47](R/conditions.R#L32-L47)). I found no bare `stop()` on
    a user-facing path in `R/`.
-3. **The engine boundary holds.** `tsfm_run_batches()` is a genuine single choke
+3. **The engine boundary holds.** `zuk_run_batches()` is a genuine single choke
    point: truncation, horizon validation, quantile validation, batching, device
    resolution, and return-shape validation all happen there, so architectures
    stay small. `R/timesfm-*.R` contains no adapter or framework awareness at all.
@@ -96,14 +96,14 @@ dim: 6 9   n_nonfinite: 12
 The `NA` channel indices propagate into the returned matrix as `NA` values,
 which `validate_quantile_matrix()` catches
 ([R/batching.R:193-203](R/batching.R#L193-L203)) and reports as
-`tsfm_error_contract` — a `tsfm_error_internal`
+`zuk_error_contract` — a `zuk_error_internal`
 ([R/conditions.R:169-189](R/conditions.R#L169-L189)), i.e. "this is a bug in
-tsfm, file a report". So a valid request, built from the package's own
+zukzeit, file a report". So a valid request, built from the package's own
 discovery API, fails as an internal engine bug.
 
 This is squarely on the documented consumer path: `consumer-api.md` R1 lists
 `quantile_levels` as a discovery column, so the natural `tsai` idiom —
-read the levels from `tsfm_models()`, pass them to `forecast()` — is the failing
+read the levels from `zuk_models()`, pass them to `forecast()` — is the failing
 case. Typing `seq(0.1, 0.9, by = 0.1)` by hand fails identically.
 
 Why no test catches it: every real-checkpoint test uses `c(0.1, 0.5, 0.9)`
@@ -111,7 +111,7 @@ Why no test catches it: every real-checkpoint test uses `c(0.1, 0.5, 0.9)`
 which happens to be the three levels where both spellings agree; and the parity
 fixtures read their levels from JSON
 ([test-parity-timesfm.R:31](tests/testthat/test-parity-timesfm.R#L31)), so they
-match `config.json` bit-for-bit. `tsfm_check_architecture()` also defaults to
+match `config.json` bit-for-bit. `zuk_check_architecture()` also defaults to
 `c(0.1, 0.5, 0.9)` ([R/conformance.R:97](R/conformance.R#L97)). The codebase
 already mixes the two spellings without noticing — `test-timesfm-reference.R:31`
 compares them with tolerance-based `expect_equal()` and passes.
@@ -121,14 +121,14 @@ rather than the user's, so everything downstream is canonical — it already
 computes the tolerance match, it just discards the result
 ([R/capabilities.R:279-299](R/capabilities.R#L279-L299)). Independently, make
 `timesfm_predict_batch()` match within tolerance and abort
-`tsfm_error_quantile_levels` on an unmatched level instead of emitting `NA`.
+`zuk_error_quantile_levels` on an unmatched level instead of emitting `NA`.
 Add a parity or conformance case using all nine levels.
 
 ### 2. Effective context length shrinks with the horizon, silently — MEDIUM
 
 `timesfm_capabilities()` declares a flat `max_context` of
 `context_length - horizon_length` = 16256
-([R/arch-timesfm.R:71-76](R/arch-timesfm.R#L71-L76)), and `tsfm_run_batches()`
+([R/arch-timesfm.R:71-76](R/arch-timesfm.R#L71-L76)), and `zuk_run_batches()`
 truncates to exactly that. The architecture then truncates a *second* time,
 using a horizon-dependent budget:
 
@@ -154,9 +154,9 @@ the resulting truncation is applied to **every** context in it. A series with
 context — and therefore a different forecast — than the same series forecast
 alone or in a batch of short horizons.
 
-Because `tsfm_run_batches()` chunks by `batch_size`
+Because `zuk_run_batches()` chunks by `batch_size`
 ([R/batching.R:283](R/batching.R#L283)), the grouping itself depends on
-`options(tsfm.batch_size)`, so the same panel can produce different numbers at
+`options(zuk.batch_size)`, so the same panel can produce different numbers at
 different batch sizes. That contradicts the contract's guarantee that "the batch
 path is an optimisation, never a different model"
 ([R/contract.R:55-57](R/contract.R#L55-L57)).
@@ -197,7 +197,7 @@ second checkpoint. A comment naming the coupling, or deriving the indices from
 
 ### 6. The interrupt guarantee is weaker than advertised — LOW
 
-`tsfm_check_user_interrupt()` calls an option hook and otherwise does nothing
+`zuk_check_user_interrupt()` calls an option hook and otherwise does nothing
 ([R/batching.R:112-116](R/batching.R#L112-L116)). The default hook is unset, so
 in an ordinary session it is a no-op. Interrupts between batches are delivered by
 R's own evaluator, not by this function, and a single long `torch` call is not
@@ -222,11 +222,11 @@ should not be read as covering it.
 
 ### 8. Optional dependencies are reached without the package's own guard — LOW
 
-The codebase's convention is `tsfm_require_namespace()`, which produces a typed
-`tsfm_error_capability` ([R/conditions.R:13-30](R/conditions.R#L13-L30)), and
+The codebase's convention is `zuk_require_namespace()`, which produces a typed
+`zuk_error_capability` ([R/conditions.R:13-30](R/conditions.R#L13-L30)), and
 `CLAUDE.md` mandates a guard for optional deps. Two exported functions skip it:
 
-- `tsfm_reg()` calls `parsnip::new_model_spec()` directly
+- `zuk_reg()` calls `parsnip::new_model_spec()` directly
   ([R/parsnip.R:35-42](R/parsnip.R#L35-L42));
 - `context_length()` calls `dials::new_quant_param()` directly
   ([R/parsnip.R:166-175](R/parsnip.R#L166-L175)).
@@ -245,7 +245,7 @@ stays in `Suggests` solely to support it. Stage 5 owns the dependency audit;
 noting it here so it is not forgotten.
 
 Minor sibling: `jsonlite` is a hard `Import` yet is reached through
-`tsfm_require_namespace("jsonlite")` as though optional
+`zuk_require_namespace("jsonlite")` as though optional
 ([R/hub.R:208-211](R/hub.R#L208-L211)). Harmless, but inconsistent.
 
 ---
@@ -255,7 +255,7 @@ Minor sibling: `jsonlite` is a hard `Import` yet is reached through
 | Stage | Claimed | Assessment |
 |---|---|---|
 | 0 — Honest baseline | Closed locally | **Holds.** Registry, README table, catalogue, and tests agree. Chronos-2 unregistered and rejected pre-network. Remote CI still unrecorded. |
-| 1 — Feasibility, contract, catalogue | Complete locally | **Holds.** Capability constructor enforces contract v1; all seven error leaves carry exactly one policy parent; `tsfm_models()` is static and offline. Finding 8 is a small gap in the optional-dependency convention. |
+| 1 — Feasibility, contract, catalogue | Complete locally | **Holds.** Capability constructor enforces contract v1; all seven error leaves carry exactly one policy parent; `zuk_models()` is static and offline. Finding 8 is a small gap in the optional-dependency convention. |
 | 2 — Reference, loader, lifecycle | Complete locally | **Holds.** Exact-header validation, 232-tensor spec, LRU keyed on model/revision/device/options, prefetch that constructs nothing. Committing exact float32 inputs alongside the JSON was the right call for reproducible parity. |
 | 3 — Native inference | Complete locally (table says "Not started") | **Substantially complete, with findings 1–3 outstanding.** Finding 1 breaks a documented consumer path; 2 and 3 are contract-honesty and determinism gaps. |
 
@@ -264,7 +264,7 @@ Minor sibling: `jsonlite` is a hard `Import` yet is reached through
 - **No test uses more than three quantile levels on a real handle.** This is what
   hides finding 1. A nine-level case belongs in the parity suite.
 - **All TimesFM numerical evidence is opt-in.** Everything meaningful is gated on
-  `TSFM_RUN_CHECKPOINT_TEST=true` plus a 925 MB cached checkpoint. Keeping CI
+  `ZUK_RUN_CHECKPOINT_TEST=true` plus a 925 MB cached checkpoint. Keeping CI
   network-free is correct, but it means the `state = "supported"` claim rests
   entirely on a manual local run that no CI has reproduced.
 - **No weight-free test of the inference logic.** `timesfm_prepare_batch()`,
@@ -321,21 +321,21 @@ re-derives a match the engine already made.
 
 | # | Finding | Fix |
 |---|---|---|
-| 1 | Nine-level request → NA forecasts | `check_quantile_levels()` canonicalises to the matched supported values ([capabilities.R](R/capabilities.R)); new `tsfm_match_quantile_levels()` does tolerant matching; `timesfm_predict_batch()` resolves channels *before* tensor work and raises `tsfm_error_quantile_levels` instead of emitting `NA` |
+| 1 | Nine-level request → NA forecasts | `check_quantile_levels()` canonicalises to the matched supported values ([capabilities.R](R/capabilities.R)); new `zuk_match_quantile_levels()` does tolerant matching; `timesfm_predict_batch()` resolves channels *before* tensor work and raises `zuk_error_quantile_levels` instead of emitting `NA` |
 | 2 | Undeclared horizon-dependent context shrink | `timesfm_usable_context()` names the rule; `max_context` documented as the h ≤ 128 best case, with a horizon/context table in the README |
 | 3 | Forecast depended on batch composition | Truncation is per series from that series' own horizon, not `max(horizons)` across the batch |
 | 4 | Dead KV concat per layer per decode step | Removed; `all_key` is built once, after RoPE |
 | 5 | Hardcoded channel indices | `timesfm_channel_layout()` derives every index; a test pins them to `2:10` / `6` / `2:5` / `7:10` for the pinned config |
 | 6 | Overstated interrupt guarantee | Comment, NEWS, and roadmap now say what is actually guaranteed: boundary *placement*, with R delivering the interrupt and a single `torch` call uninterruptible |
 | 7 | `max_context` check silently passed | Reports not-applicable with an actionable message when the probe is too short to reach the limit |
-| 8 | Unguarded `parsnip`/`dials` calls | `tsfm_reg()` and `context_length()` use `tsfm_require_namespace()`, so a core install gets the same typed error as every other optional path |
+| 8 | Unguarded `parsnip`/`dials` calls | `zuk_reg()` and `context_length()` use `zuk_require_namespace()`, so a core install gets the same typed error as every other optional path |
 | 9 | `brulee` for unregistered dead code | `arch-chronos2.R` moved to `.agents/reference/`, `brulee` dropped from `Suggests`; the pre-network rejection path is unchanged. Redundant `jsonlite` guard removed |
 
 ### 10. The CPU parity gate could not run on an accelerator host — HIGH
 
 Found by execution. `test-parity-timesfm.R` loaded the handle with default
-`device = NULL`, so `tsfm_resolve_device()` picked this machine's MPS backend,
-and the CPU-pinned fixture comparison then failed with `tsfm_error_device`. The
+`device = NULL`, so `zuk_resolve_device()` picked this machine's MPS backend,
+and the CPU-pinned fixture comparison then failed with `zuk_error_device`. The
 gate was silently host-dependent: on any CUDA or MPS machine, the one test that
 certifies numerical correctness could not run at all.
 
@@ -354,12 +354,12 @@ because every internal caller passes `device` explicitly. Now
 ### Verification
 
 - Deterministic suite: green. `R CMD check`: **0 errors, 0 warnings, 0 notes**.
-- Real-checkpoint gate (`TSFM_RUN_CHECKPOINT_TEST=true`, 925 MB checkpoint
+- Real-checkpoint gate (`ZUK_RUN_CHECKPOINT_TEST=true`, 925 MB checkpoint
   downloaded and size-validated): all four golden parity fixtures pass on CPU
-  within `1e-4`; `tsfm_check_architecture()` passes against the real handle;
+  within `1e-4`; `zuk_check_architecture()` passes against the real handle;
   repeated inference is identical and silent.
 - New regression tests: canonical levels reach the architecture (via the exact
-  values `tsfm_models()` advertises); levels collapsing onto one trained level
+  values `zuk_models()` advertises); levels collapsing onto one trained level
   are refused; per-series truncation is independent of batch composition, both
   weight-free and against the real checkpoint; all nine levels forecast finite,
   monotone, and agree with the three-level request on the shared median;
@@ -399,7 +399,7 @@ because every internal caller passes `device` explicitly. Now
 
 ### Known follow-up, not fixed
 
-`tsfm_infer()` injects `0.5` into the requested levels so the point forecast is
+`zuk_infer()` injects `0.5` into the requested levels so the point forecast is
 exact ([forecast.R](R/forecast.R)). A checkpoint whose trained levels exclude
 `0.5` would have that injection rejected by its own capability check. No current
 or catalogued model has that shape, and fixing it means *deciding* what `.mean`

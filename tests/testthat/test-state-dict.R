@@ -34,10 +34,10 @@ test_that("TimesFM header validation is exact and classed", {
   metadata[["stacked_xf.0.attn.qkv_proj.weight"]]$shape <- c(1280L, 3840L)
   error <- expect_error(
     validate_timesfm_state_metadata(metadata, config, "id", "rev"),
-    class = "tsfm_error_checkpoint"
+    class = "zuk_error_checkpoint"
   )
   expect_identical(error$tensor, "stacked_xf.0.attn.qkv_proj.weight")
-  expect_s3_class(error, "tsfm_error_internal")
+  expect_s3_class(error, "zuk_error_internal")
 })
 
 test_that("a safetensors file loads to a complete named R torch state dict", {
@@ -51,7 +51,7 @@ test_that("a safetensors file loads to a complete named R torch state dict", {
     path
   )
   record <- list(model_id = "fixture/model", revision = "abc", architecture = "fixture")
-  state <- tsfm_load_state_dict(path, record, list())
+  state <- zuk_load_state_dict(path, record, list())
   expect_setequal(names(state), c("block.weight", "block.bias"))
   expect_true(all(vapply(state, inherits, logical(1), what = "torch_tensor")))
 })
@@ -59,8 +59,8 @@ test_that("a safetensors file loads to a complete named R torch state dict", {
 test_that("missing and corrupt safetensors files are actionable checkpoint errors", {
   record <- list(model_id = "fixture/model", revision = "abc", architecture = "fixture")
   missing <- expect_error(
-    tsfm_read_safetensors_metadata(tempfile(), record),
-    class = "tsfm_error_checkpoint"
+    zuk_read_safetensors_metadata(tempfile(), record),
+    class = "zuk_error_checkpoint"
   )
   expect_identical(missing$model_id, "fixture/model")
   expect_identical(missing$tensor, "model.safetensors")
@@ -68,16 +68,16 @@ test_that("missing and corrupt safetensors files are actionable checkpoint error
   corrupt <- tempfile(fileext = ".safetensors")
   writeBin(charToRaw("not safetensors"), corrupt)
   error <- expect_error(
-    tsfm_read_safetensors_metadata(corrupt, record),
-    class = "tsfm_error_checkpoint"
+    zuk_read_safetensors_metadata(corrupt, record),
+    class = "zuk_error_checkpoint"
   )
   expect_match(conditionMessage(error), "header")
 })
 
 test_that("the real pinned checkpoint can load locally when explicitly enabled", {
-  skip_if_not(identical(Sys.getenv("TSFM_RUN_CHECKPOINT_TEST"), "true"))
+  skip_if_not(identical(Sys.getenv("ZUK_RUN_CHECKPOINT_TEST"), "true"))
   skip_if_no_torch()
-  record <- tsfm_catalogue_get("google/timesfm-2.5-200m-pytorch")
+  record <- zuk_catalogue_get("google/timesfm-2.5-200m-pytorch")
   paths <- vapply(record$manifest, function(file) {
     hfhub::hub_download(
       record$model_id,
@@ -89,7 +89,7 @@ test_that("the real pinned checkpoint can load locally when explicitly enabled",
   names(paths) <- record$manifest
   config <- jsonlite_read(paths[["config.json"]])
   config$architecture <- normalize_architecture(config)
-  state <- tsfm_load_state_dict(paths[["model.safetensors"]], record, config)
+  state <- zuk_load_state_dict(paths[["model.safetensors"]], record, config)
   expect_length(state, 232L)
   expect_setequal(names(state), names(timesfm_expected_state_spec(config)))
 })

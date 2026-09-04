@@ -1,4 +1,4 @@
-# tsfm 0.1.0
+# zukzeit 0.1.0
 
 Development release. The native TimesFM inference baseline and surrounding
 model-loading and forecasting shell are implemented. Toto 2.0 4M and a native
@@ -19,7 +19,7 @@ Chronos-2 port remain required before `0.1.0` is released.
   `.pred_q02` and one silently overwrote the other. Whole-percent levels keep
   the familiar `.pred_q10` form; finer levels carry the digits they need
   (`.pred_q02_5`).
-* `tsfm_reg()` specifications gained the `update()` method every `parsnip`
+* `zuk_reg()` specifications gained the `update()` method every `parsnip`
   specification is expected to provide. Without it `tune::finalize_workflow()`
   fell through to `update.default()` and failed with "need an object with call
   component", so a tuned `context_length` could never be refit --- the whole
@@ -29,7 +29,7 @@ Chronos-2 port remain required before `0.1.0` is released.
   `droplevels()` or `subset()` --- indexed the stored histories by code, which
   forecast the wrong series or failed several frames down with an error about
   horizons.
-* `tsfm_check_architecture()` no longer reseeds the caller's session. Its
+* `zuk_check_architecture()` no longer reseeds the caller's session. Its
   default probe context is still deterministic, but the previous RNG state is
   restored on exit.
 * The point forecast's quantile level is resolved against the checkpoint's own
@@ -37,7 +37,7 @@ Chronos-2 port remain required before `0.1.0` is released.
   already reconciled, which risked carrying two spellings of one trained level
   into the batch boundary. A checkpoint with no trained median now forecasts
   using the requested level nearest it rather than refusing the request.
-* `tsfm_fit()` no longer molds through `hardhat`. The blueprint it built was
+* `zuk_fit()` no longer molds through `hardhat`. The blueprint it built was
   never forged in `predict()`, so the dependency bought nothing; the fit
   interface now works with no optional packages installed at all.
 * Capability flags are validated as logicals. `multivariate = 1` passed the
@@ -51,13 +51,13 @@ Chronos-2 port remain required before `0.1.0` is released.
 * Every exported function now has a runnable example. The `stub` fixture needs
   no network, no checkpoint, and no `torch`, so the engine, forecast, fit,
   device, lifecycle, and tuning surfaces are all demonstrated executably;
-  `tsfm_download()` is the sole `\dontrun{}`.
+  `zuk_download()` is the sole `\dontrun{}`.
 * `vignette("zero-shot-workflow")` and `vignette("rolling-origin-tuning")` now
   evaluate their code. They previously showed chunks that referenced objects
   never defined in the vignette, so nothing could have run as written --- which
   is how the missing `update()` method and the `add_formula()` trap below went
   unnoticed.
-* `?tsfm_reg` documents that a workflow must pass the `index` and `id` columns
+* `?zuk_reg` documents that a workflow must pass the `index` and `id` columns
   through to the engine. `add_formula()` keeps only the formula's terms and
   drops the series id; `add_variables()` is the right preprocessor.
 
@@ -68,7 +68,7 @@ Chronos-2 port remain required before `0.1.0` is released.
   included the complete upstream licence in the installed package.
 * Removed the undeclared `harus` startup integration. Consumer packages can
   use the documented catalogue, lifecycle, condition, and `TSFM()` APIs without
-  creating a reverse dependency from `tsfm`.
+  creating a reverse dependency from `zukzeit`.
 * Documented the structured condition hierarchy and cache-status schema as
   installed help topics, and made the stub-backed `TSFM()` example executable.
 * Safetensors readers now close package-owned file connections deterministically
@@ -76,13 +76,13 @@ Chronos-2 port remain required before `0.1.0` is released.
 
 ## Engine contract
 
-* `tsfm` is positioned as a framework-neutral **inference engine**: it owns the
+* `zukzeit` is positioned as a framework-neutral **inference engine**: it owns the
   path from a pretrained checkpoint to predictive quantiles, and interfaces to
   tidymodels, the tidyverts, and modeltime are optional adapters of equal
   standing. `hardhat` moved from `Imports` to `Suggests` accordingly.
-* `` ?`tsfm-architecture-contract` `` documents the public execution surface, and
-  `tsfm_contract_version()` versions it. `new_tsfm_model()` stamps every handle.
-* `tsfm_check_architecture()` turns the contract into an executable gate:
+* `` ?`zuk-architecture-contract` `` documents the public execution surface, and
+  `zuk_contract_version()` versions it. `new_zuk_model()` stamps every handle.
+* `zuk_check_architecture()` turns the contract into an executable gate:
   construction, forecast shape, quantile monotonicity, finiteness, context
   limits, empty-context handling, and batch/loop agreement. Built-in
   architectures run it in the test suite; external implementations can use the
@@ -91,7 +91,7 @@ Chronos-2 port remain required before `0.1.0` is released.
   never counts an invariant that did not run.
 * `forecast()` is now re-exported from `generics` rather than defined locally,
   and `as_fable()` is registered onto `fabletools`'s generic from `.onLoad()`
-  instead of shadowing it. Attaching `tsfm` alongside fabletools, modeltime, or
+  instead of shadowing it. Attaching `zukzeit` alongside fabletools, modeltime, or
   forecast no longer risks masking either verb. Call `fabletools::as_fable()`.
 * Fixed a latent bug where the parsnip `tunable()` registration called a
   non-existent `rlang::s3_register()`; it is `vctrs::s3_register()`, and the
@@ -100,24 +100,24 @@ Chronos-2 port remain required before `0.1.0` is released.
 
 ## Core
 
-* Added `tsfm_download()` for explicit manifest prefetch, `tsfm_cache_status()`
-  for separate disk/resident state, and `tsfm_unload()` for resident eviction
+* Added `zuk_download()` for explicit manifest prefetch, `zuk_cache_status()`
+  for separate disk/resident state, and `zuk_unload()` for resident eviction
   without deleting the `hfhub` cache.
-* `tsfm_pretrained()` now keys constructed handles by checkpoint, immutable
+* `zuk_pretrained()` now keys constructed handles by checkpoint, immutable
   revision, resolved device, and load-affecting options in an R-session LRU
-  bounded by `options(tsfm.max_loaded_models = 1L)`. `reuse = FALSE` bypasses
+  bounded by `options(zuk.max_loaded_models = 1L)`. `reuse = FALSE` bypasses
   reuse and `0L` disables resident storage.
 * Added safetensors header validation and named R `torch` state-dict loading,
   with download and checkpoint failures mapped to their structured policy
   families.
-* Added the offline `tsfm_models()` checkpoint catalogue. Its safe default
+* Added the offline `zuk_models()` checkpoint catalogue. Its safe default
   returns only supported checkpoints, while `state = NULL` exposes pinned
   scaffold records and static cost, capability, manifest-cache, provenance,
   and weight-licence metadata without network access.
 * The checkpoint catalogue is explicitly package-owned and curated.
-  `tsfm_register_arch()` registers only an in-session constructor; it does not
-  publish model IDs or change what `tsfm_models()` reports.
-* Added a structured condition hierarchy rooted at `tsfm_error`, with one
+  `zuk_register_arch()` registers only an in-session constructor; it does not
+  publish model IDs or change what `zuk_models()` reports.
+* Added a structured condition hierarchy rooted at `zuk_error`, with one
   recoverable, external, or internal policy parent and structured fields on
   capability, context, quantile, device, download, checkpoint, and contract
   failures.
@@ -128,15 +128,15 @@ Chronos-2 port remain required before `0.1.0` is released.
 * The batch boundary validates contexts, horizons, quantile levels, batch size,
   and architecture return shape/finiteness/monotonicity before assembling a
   forecast.
-* `tsfm_pretrained()` loads the self-contained `stub` fixture and pinned native
+* `zuk_pretrained()` loads the self-contained `stub` fixture and pinned native
   TimesFM checkpoints through the constructor registered for each curated
   catalogue entry.
-* `tsfm_capabilities()` reports per-model capability metadata, with pre-flight
+* `zuk_capabilities()` reports per-model capability metadata, with pre-flight
   validation that rejects unsupported requests before inference.
 * `forecast()` forecasts a `tsibble` or data-frame panel with no optional
-  dependencies; `tsfm_fit()` / `predict()` provide a hardhat-based,
+  dependencies; `zuk_fit()` / `predict()` provide a hardhat-based,
   tidymodels-conformant interface when `hardhat` is installed.
-* `tsfm_forecast` objects are backed by `distributional`, with a
+* `zuk_forecast` objects are backed by `distributional`, with a
   `fabletools::as_fable()` method and tidy prediction adapters.
 * Added `TSFM()`, a `fabletools` model definition, so a checkpoint composes
   inside `fabletools::model()` next to any other tidyverts model. It evaluates
@@ -156,17 +156,17 @@ Chronos-2 port remain required before `0.1.0` is released.
 * `fabletools::as_fable()` no longer drops `.mean`. It does not synthesise the
   column the way `fabletools::forecast()` does, so the converted fable
   previously had a silently `NULL` point forecast.
-* Batched panel inference (`tsfm_run_batches()`) with device resolution and
-  validation across CPU/CUDA/MPS (`tsfm_resolve_device()`, `tsfm_set_device()`).
+* Batched panel inference (`zuk_run_batches()`) with device resolution and
+  validation across CPU/CUDA/MPS (`zuk_resolve_device()`, `zuk_set_device()`).
 
 ## tidymodels
 
-* `tsfm_reg()` parsnip specification and `"tsfm"` engine, with an exported fit
+* `zuk_reg()` parsnip specification and `"zukzeit"` engine, with an exported fit
   bridge exercised end to end against the stub.
 * `context_length()` is a `dials` parameter and now actually bounds the history
   retained by the fitted engine.
-* `tsfm_reg()` and `context_length()` check for `parsnip` and `dials` up front,
-  so a core installation gets the same typed `tsfm_error_capability` as every
+* `zuk_reg()` and `context_length()` check for `parsnip` and `dials` up front,
+  so a core installation gets the same typed `zuk_error_capability` as every
   other optional-dependency path instead of a bare "no package called" error.
 
 ## Models
@@ -195,12 +195,12 @@ Chronos-2 port remain required before `0.1.0` is released.
   the engine boundary and handed to the architecture in the checkpoint's own
   spelling. `seq(0.1, 0.9, by = 0.1)` and the literals parsed from `config.json`
   differ at `0.3` and `0.7`; previously, requesting the levels advertised by
-  `tsfm_models()` produced `NA` forecasts that surfaced as an internal contract
-  error. An unsupported level is now a `tsfm_error_quantile_levels` refusal
+  `zuk_models()` produced `NA` forecasts that surfaced as an internal contract
+  error. An unsupported level is now a `zuk_error_quantile_levels` refusal
   raised before any tensor work.
 * TimesFM truncates context per series using that series' own horizon, so a
   forecast no longer depends on which other series share its batch or on
-  `options(tsfm.batch_size)`. The usable history is
+  `options(zuk.batch_size)`. The usable history is
   `context_length - ceiling(h / 128) * 128`; `max_context` reports the h ≤ 128
   best case, and the README tabulates the rest.
 
@@ -232,6 +232,6 @@ Chronos-2 port remain required before `0.1.0` is released.
 * The old **Chronos-2** Brulee adapter is no longer registered or advertised as
   executable. It is kept as prior art under `.agents/reference/` rather than
   shipped in `R/`, and `brulee` has left `Suggests`: the package no longer
-  declares a dependency for code nothing calls. `tsfm_pretrained()` continues
+  declares a dependency for code nothing calls. `zuk_pretrained()` continues
   to reject Chronos-2 ids before any network or tensor work until the required
   native port passes its `0.1.0` support gates.

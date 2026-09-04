@@ -23,7 +23,7 @@ test_that("native TTM matches the reference implementation on golden fixtures", 
   skip_if_not(dir.exists(dir) && length(list.files(dir, pattern = "\\.json$")) > 0,
               "No TTM golden fixtures yet; generate them per fixtures/README.md.")
 
-  model <- tsfm_pretrained("ibm-granite/granite-timeseries-ttm-r2")
+  model <- zuk_pretrained("ibm-granite/granite-timeseries-ttm-r2")
 
   for (fx in read_parity_fixtures(dir)) {
     context <- as.numeric(fx$context)

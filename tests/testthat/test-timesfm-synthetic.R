@@ -156,7 +156,7 @@ test_that("all nine trained levels resolve, and an untrained one is refused", {
 
   error <- expect_error(
     timesfm_predict_batch(module, list(context), 4L, c(0.05, 0.5), config, "cpu"),
-    class = "tsfm_error_quantile_levels"
+    class = "zuk_error_quantile_levels"
   )
-  expect_s3_class(error, "tsfm_error_recoverable")
+  expect_s3_class(error, "zuk_error_recoverable")
 })

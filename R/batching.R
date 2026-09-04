@@ -6,9 +6,9 @@
 # series via `predict_fn`; native torch architectures supply a vectorised
 # `predict_batch_fn` and are fed in chunks of `batch_size`.
 
-# Default batch size, overridable with `options(tsfm.batch_size = ...)`.
-tsfm_default_batch_size <- function() {
-  as.integer(getOption("tsfm.batch_size", 64L))
+# Default batch size, overridable with `options(zuk.batch_size = ...)`.
+zuk_default_batch_size <- function() {
+  as.integer(getOption("zuk.batch_size", 64L))
 }
 
 # Validate a device string. Accepts "auto", "cpu", "mps", "cuda", and indexed
@@ -21,24 +21,24 @@ is_valid_device <- function(device) {
 #' Resolve a compute device
 #'
 #' Returns a concrete device string for torch models. `"auto"` (the default,
-#' overridable with `options(tsfm.device = ...)`) picks CUDA, then MPS, then CPU,
+#' overridable with `options(zuk.device = ...)`) picks CUDA, then MPS, then CPU,
 #' based on what the installed torch backend reports, and warns if a requested
 #' accelerator is unavailable, falling back to CPU. Without torch it is always
 #' `"cpu"`, so the stub path never touches torch.
 #'
 #' @param device One of `"auto"`, `"cpu"`, `"mps"`, `"cuda"`, `"cuda:N"`, or
-#'   `NULL` to read the `tsfm.device` option.
+#'   `NULL` to read the `zuk.device` option.
 #' @return A concrete device string (never `"auto"`).
 #' @export
 #' @examples
-#' tsfm_resolve_device("cpu")
+#' zuk_resolve_device("cpu")
 #'
 #' # "auto" picks the best backend the installed torch reports.
-#' tsfm_resolve_device("auto")
-tsfm_resolve_device <- function(device = NULL) {
-  device <- device %||% getOption("tsfm.device", "auto")
+#' zuk_resolve_device("auto")
+zuk_resolve_device <- function(device = NULL) {
+  device <- device %||% getOption("zuk.device", "auto")
   if (!is_valid_device(device)) {
-    tsfm_abort_device(c(
+    zuk_abort_device(c(
       "Invalid {.arg device}: {.val {device}}.",
       "i" = "Use one of {.val auto}, {.val cpu}, {.val mps}, {.val cuda}, or {.val cuda:N}."
     ), requested_device = device)
@@ -81,36 +81,36 @@ validate_available_device <- function(device) {
   device
 }
 
-#' Set or get the default tsfm compute device
+#' Set or get the default zukzeit compute device
 #'
-#' Thin wrapper over the `tsfm.device` option consulted by
-#' [tsfm_resolve_device()].
+#' Thin wrapper over the `zuk.device` option consulted by
+#' [zuk_resolve_device()].
 #'
 #' @param device A device string, or `NULL` to only read the current setting.
 #' @return Invisibly, the previous option value.
 #' @export
 #' @examples
-#' previous <- tsfm_set_device("cpu")
-#' tsfm_resolve_device()
+#' previous <- zuk_set_device("cpu")
+#' zuk_resolve_device()
 #'
 #' # Restore whatever was configured before.
-#' tsfm_set_device(previous)
-tsfm_set_device <- function(device) {
+#' zuk_set_device(previous)
+zuk_set_device <- function(device) {
   if (!is_valid_device(device)) {
-    tsfm_abort_device(
+    zuk_abort_device(
       "Invalid {.arg device}: {.val {device}}.",
       requested_device = device
     )
   }
-  old <- getOption("tsfm.device", "auto")
-  options(tsfm.device = device)
+  old <- getOption("zuk.device", "auto")
+  options(zuk.device = device)
   invisible(old)
 }
 
 # Move a torch tensor or module to a device. No-op fallback keeps non-torch
 # code paths (the stub) working; native architectures call this in their
 # forward pass.
-tsfm_to_device <- function(x, device) {
+zuk_to_device <- function(x, device) {
   if (!requireNamespace("torch", quietly = TRUE)) {
     return(x)
   }
@@ -126,15 +126,15 @@ tsfm_to_device <- function(x, device) {
 # --- and the option hook lets tests drive a condition through it deterministically,
 # to prove interrupts are neither swallowed nor rewrapped as engine errors and
 # that no partial forecast escapes.
-tsfm_check_user_interrupt <- function() {
-  hook <- getOption("tsfm.interrupt_check", NULL)
+zuk_check_user_interrupt <- function() {
+  hook <- getOption("zuk.interrupt_check", NULL)
   if (is.function(hook)) hook()
   invisible(NULL)
 }
 
 validate_batch_contexts <- function(contexts, model, call = rlang::caller_env()) {
   if (!is.list(contexts)) {
-    tsfm_abort_capability(
+    zuk_abort_capability(
       "{.arg contexts} must be a list of numeric history vectors.",
       model_id = model$model_id,
       revision = model$revision,
@@ -147,7 +147,7 @@ validate_batch_contexts <- function(contexts, model, call = rlang::caller_env())
   lapply(seq_along(contexts), function(i) {
     ctx <- contexts[[i]]
     if (!is.numeric(ctx) || !is.null(dim(ctx))) {
-      tsfm_abort_capability(
+      zuk_abort_capability(
         "Context {i} must be a numeric vector.",
         model_id = model$model_id,
         revision = model$revision,
@@ -159,7 +159,7 @@ validate_batch_contexts <- function(contexts, model, call = rlang::caller_env())
     }
     ctx <- as.numeric(ctx)
     if (any(is.infinite(ctx))) {
-      tsfm_abort_capability(
+      zuk_abort_capability(
         "Context {i} contains an infinite value.",
         model_id = model$model_id,
         revision = model$revision,
@@ -171,7 +171,7 @@ validate_batch_contexts <- function(contexts, model, call = rlang::caller_env())
     }
     ctx <- ctx[!is.na(ctx)]
     if (!length(ctx)) {
-      tsfm_abort_capability(
+      zuk_abort_capability(
         "Context {i} has no observed values.",
         model_id = model$model_id,
         revision = model$revision,
@@ -193,7 +193,7 @@ validate_quantile_matrix <- function(x, h, quantile_levels, model,
   expected <- c(as.integer(h), length(quantile_levels))
   if (!is.matrix(x) || !is.numeric(x) || !identical(dim(x), expected)) {
     actual <- if (is.matrix(x)) dim(x) else class(x)
-    tsfm_abort_contract(
+    zuk_abort_contract(
       c(
         "An architecture returned an invalid forecast matrix.",
         "x" = "Expected a numeric matrix with dimensions {.val {expected}}.",
@@ -208,7 +208,7 @@ validate_quantile_matrix <- function(x, h, quantile_levels, model,
     )
   }
   if (any(!is.finite(x))) {
-    tsfm_abort_contract(
+    zuk_abort_contract(
       "An architecture returned non-finite forecast values.",
       architecture = model$architecture,
       model_id = model$model_id,
@@ -219,7 +219,7 @@ validate_quantile_matrix <- function(x, h, quantile_levels, model,
     )
   }
   if (ncol(x) > 1L && any(apply(x, 1L, function(row) any(diff(row) < 0)))) {
-    tsfm_abort_contract(
+    zuk_abort_contract(
       "An architecture returned crossing predictive quantiles.",
       architecture = model$architecture,
       model_id = model$model_id,
@@ -238,20 +238,20 @@ validate_quantile_matrix <- function(x, h, quantile_levels, model,
 #' model. Returns a list, aligned to `contexts`, of `h x length(quantile_levels)`
 #' predictive-quantile matrices.
 #'
-#' @param model A `tsfm_model`.
+#' @param model A `zuk_model`.
 #' @param contexts A list of numeric context vectors (oldest first).
 #' @param horizons A list/vector of per-series integer horizons.
 #' @param quantile_levels Numeric vector of quantile levels.
 #' @param batch_size Series per batch for vectorised models; defaults to
-#'   `getOption("tsfm.batch_size", 64L)`.
-#' @param device Device string; resolved via [tsfm_resolve_device()].
+#'   `getOption("zuk.batch_size", 64L)`.
+#' @param device Device string; resolved via [zuk_resolve_device()].
 #' @return A list of quantile matrices.
 #' @export
 #' @examples
-#' model <- tsfm_pretrained("stub")
+#' model <- zuk_pretrained("stub")
 #'
 #' # Two series of different lengths, each with its own horizon.
-#' quantiles <- tsfm_run_batches(
+#' quantiles <- zuk_run_batches(
 #'   model,
 #'   contexts = list(cumsum(rep(1, 40)), cumsum(rep(2, 25))),
 #'   horizons = c(3L, 5L),
@@ -260,14 +260,14 @@ validate_quantile_matrix <- function(x, h, quantile_levels, model,
 #' lengths(quantiles)
 #' quantiles[[1]]
 #'
-#' tsfm_unload("stub")
-tsfm_run_batches <- function(model, contexts, horizons, quantile_levels,
+#' zuk_unload("stub")
+zuk_run_batches <- function(model, contexts, horizons, quantile_levels,
                              batch_size = NULL, device = NULL) {
-  if (!inherits(model, "tsfm_model")) {
-    tsfm_abort_contract(
-      "{.arg model} must be a {.cls tsfm_model}.",
+  if (!inherits(model, "zuk_model")) {
+    zuk_abort_contract(
+      "{.arg model} must be a {.cls zuk_model}.",
       contract = "engine input",
-      expected = "tsfm_model",
+      expected = "zuk_model",
       actual = class(model)
     )
   }
@@ -279,7 +279,7 @@ tsfm_run_batches <- function(model, contexts, horizons, quantile_levels,
     return(list())
   }
   if (length(raw_horizons) != n) {
-    tsfm_abort_capability(
+    zuk_abort_capability(
       "{.arg horizons} must contain one value per context.",
       model_id = model$model_id,
       revision = model$revision,
@@ -293,11 +293,11 @@ tsfm_run_batches <- function(model, contexts, horizons, quantile_levels,
   quantile_levels <- check_quantile_levels(
     caps, quantile_levels, model$model_id, model$revision
   )
-  batch_size <- batch_size %||% tsfm_default_batch_size()
+  batch_size <- batch_size %||% zuk_default_batch_size()
   if (length(batch_size) != 1L || !is.numeric(batch_size) || is.na(batch_size) ||
       !is.finite(batch_size) || batch_size <= 0 || batch_size != floor(batch_size) ||
       batch_size > .Machine$integer.max) {
-    tsfm_abort_capability(
+    zuk_abort_capability(
       "{.arg batch_size} must be one positive integer.",
       model_id = model$model_id,
       revision = model$revision,
@@ -307,17 +307,17 @@ tsfm_run_batches <- function(model, contexts, horizons, quantile_levels,
     )
   }
   batch_size <- as.integer(batch_size)
-  device <- tsfm_resolve_device(device %||% model$device)
+  device <- zuk_resolve_device(device %||% model$device)
 
   if (is.function(model$predict_batch_fn)) {
     out <- vector("list", n)
     groups <- split(seq_len(n), (seq_len(n) - 1L) %/% batch_size)
     for (g in groups) {
-      tsfm_check_user_interrupt()
+      zuk_check_user_interrupt()
       res <- model$predict_batch_fn(contexts[g], horizons[g], quantile_levels,
                                     device = device)
       if (!is.list(res) || length(res) != length(g)) {
-        tsfm_abort_contract(
+        zuk_abort_contract(
           "The model's batch function returned an invalid result collection.",
           architecture = model$architecture,
           model_id = model$model_id,
@@ -336,7 +336,7 @@ tsfm_run_batches <- function(model, contexts, horizons, quantile_levels,
     out
   } else {
     lapply(seq_len(n), function(i) {
-      tsfm_check_user_interrupt()
+      zuk_check_user_interrupt()
       validate_quantile_matrix(
         model$predict_fn(contexts[[i]], horizons[[i]], quantile_levels),
         horizons[[i]], quantile_levels, model

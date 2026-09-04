@@ -30,13 +30,13 @@ For the same workflow driven by a real checkpoint, see
 
 ## Load a model
 
-`tsfm_pretrained()` returns a uniform model handle. The stub branch is entirely
+`zuk_pretrained()` returns a uniform model handle. The stub branch is entirely
 local and deterministic:
 
 ```{r}
-library(tsfm)
+library(zukzeit)
 
-model <- tsfm_pretrained("stub")
+model <- zuk_pretrained("stub")
 ```
 
 Before doing any work, ask what the model can do. The capability report is
@@ -44,7 +44,7 @@ checked *before* inference, so an unsupported request fails fast with a clear
 message instead of deep inside a tensor op:
 
 ```{r}
-tsfm_capabilities(model)
+zuk_capabilities(model)
 ```
 
 Requests are validated against that report at the engine boundary, not after it:
@@ -107,8 +107,8 @@ straight back onto the data it came from.
 
 ## Path 2 — the tidyverts
 
-`tsfm` registers a method on `fabletools::as_fable()` rather than exporting a
-generic of its own, so the verb keeps working when fabletools and `tsfm` are
+`zukzeit` registers a method on `fabletools::as_fable()` rather than exporting a
+generic of its own, so the verb keeps working when fabletools and `zukzeit` are
 both attached. Call it qualified, or `library(fabletools)` first.
 
 ```{r, eval = has_tidyverts}
@@ -130,7 +130,7 @@ fabletools::as_fable(forecast(model, history_tsbl, h = 12)) |>
 next to any other model definition, one key at a time.
 
 ```{r, eval = has_tidyverts}
-fits <- fabletools::model(history_tsbl, tsfm = TSFM(sales, model_id = "stub"))
+fits <- fabletools::model(history_tsbl, zukzeit = TSFM(sales, model_id = "stub"))
 fits
 
 fabletools::forecast(fits, h = 3)
@@ -145,8 +145,8 @@ chosen by the engine's `model_id`; **everything else stays the same.**
 library(parsnip)
 library(workflows)
 
-spec <- tsfm_reg(context_length = 512L) |>
-  set_engine("tsfm",
+spec <- zuk_reg(context_length = 512L) |>
+  set_engine("zukzeit",
              model_id = "stub",
              index    = "month",
              id       = "store")
@@ -176,8 +176,8 @@ library(rsample)
 tuned <- tune_grid(
   workflow() |>
     add_variables(outcomes = sales, predictors = c(month, store)) |>
-    add_model(tsfm_reg(context_length = tune()) |>
-                set_engine("tsfm", model_id = "stub",
+    add_model(zuk_reg(context_length = tune()) |>
+                set_engine("zukzeit", model_id = "stub",
                            index = "month", id = "store")),
   resamples = sliding_period(history[history$store == "north", ],
                              index = month, period = "year",
@@ -199,9 +199,9 @@ The constructed handle is held in a bounded in-session cache. Evicting it does
 not touch anything on disk:
 
 ```{r}
-tsfm_cache_status()
+zuk_cache_status()
 
-tsfm_unload("stub")
+zuk_unload("stub")
 ```
 
 ## Status

@@ -1,5 +1,5 @@
 # Portions derived from TimesFM, Copyright 2025 Google LLC.
-# Translated and modified for R/torch by the tsfm authors.
+# Translated and modified for R/torch by the zukzeit authors.
 # Licensed under Apache-2.0; see inst/COPYRIGHTS and
 # inst/LICENSES/Apache-2.0.txt.
 
@@ -34,7 +34,7 @@ timesfm_spike_rope <- torch::nn_module(
                         min_timescale = 1,
                         max_timescale = 10000) {
     if (embedding_dims %% 2L != 0L) {
-      tsfm_abort_contract(
+      zuk_abort_contract(
         "RoPE requires an even head dimension; got {embedding_dims}.",
         architecture = "timesfm",
         contract = "rotary embedding shape",
@@ -48,7 +48,7 @@ timesfm_spike_rope <- torch::nn_module(
   },
   forward = function(inputs, position) {
     if (inputs$shape[[length(inputs$shape)]] != self$embedding_dims) {
-      tsfm_abort_contract(
+      zuk_abort_contract(
         "RoPE input and configured embedding dimensions differ.",
         architecture = "timesfm",
         contract = "rotary embedding shape",
@@ -86,7 +86,7 @@ timesfm_spike_attention <- torch::nn_module(
   "timesfm_spike_attention",
   initialize = function(model_dim, num_heads, epsilon = 1e-6) {
     if (model_dim %% num_heads != 0L) {
-      tsfm_abort_contract(
+      zuk_abort_contract(
         "{model_dim} model dimensions cannot be split over {num_heads} heads.",
         architecture = "timesfm",
         contract = "attention shape",
@@ -225,7 +225,7 @@ timesfm_spike_module <- torch::nn_module(
 timesfm_spike_load_fused_qkv <- function(module, weight) {
   target <- module$transformer$attn$qkv_proj$weight
   if (!inherits(weight, "torch_tensor") || !identical(weight$shape, target$shape)) {
-    tsfm_abort_checkpoint(
+    zuk_abort_checkpoint(
       "Fused QKV must have shape [{paste(target$shape, collapse = ', ')}].",
       model_id = "google/timesfm-2.5-200m-pytorch",
       tensor = "qkv_proj.weight",

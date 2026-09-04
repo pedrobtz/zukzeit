@@ -11,7 +11,7 @@ vignette: >
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 ```
 
-TimesFM 2.5 is the first architecture `tsfm` runs natively: the checkpoint is
+TimesFM 2.5 is the first architecture `zukzeit` runs natively: the checkpoint is
 loaded into R `torch`, and no Python runs at inference time. This vignette walks
 the whole public surface on one panel, from discovery to forecast.
 
@@ -21,14 +21,14 @@ running the code as written.
 
 ## Find a checkpoint before downloading anything
 
-`tsfm_models()` is offline and static. It never fetches a config or a weight
+`zuk_models()` is offline and static. It never fetches a config or a weight
 file, so you can inspect what is available, how large it is, and what licence
 its weights carry before committing to a download:
 
 ```{r}
-library(tsfm)
+library(zukzeit)
 
-tsfm_models()
+zuk_models()
 #>                          model_id architecture     state max_context  n_params
 #> 1 google/timesfm-2.5-200m-pytorch      timesfm supported       16256 231289280
 #>   size_bytes cached    license
@@ -43,16 +43,16 @@ architecture conformance and numerical parity against the pinned reference. The
 is pending without touching the network. To fetch the files explicitly:
 
 ```{r}
-tsfm_download("google/timesfm-2.5-200m-pytorch")
+zuk_download("google/timesfm-2.5-200m-pytorch")
 ```
 
 ## Load the model and check what it can do
 
 ```{r}
-model <- tsfm_pretrained("google/timesfm-2.5-200m-pytorch", device = "cpu")
+model <- zuk_pretrained("google/timesfm-2.5-200m-pytorch", device = "cpu")
 
-tsfm_capabilities(model)
-#> <tsfm_capabilities>
+zuk_capabilities(model)
+#> <zuk_capabilities>
 #>   architecture:      timesfm
 #>   max_context:       16256        max_horizon: 1024
 #>   quantiles:         native        levels: 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9
@@ -64,7 +64,7 @@ tsfm_capabilities(model)
 
 Capabilities are enforced *before* inference, so an unsupported request costs
 nothing. The `FALSE` fields are honest: contract v1 has no channel for
-covariates or multivariate targets, so `tsfm` refuses rather than silently
+covariates or multivariate targets, so `zukzeit` refuses rather than silently
 ignoring them.
 
 `max_context` is the best case. TimesFM's 16,384 positions cover the context and
@@ -97,7 +97,7 @@ fc <- forecast(
   quantile_levels = c(0.1, 0.5, 0.9)
 )
 fc
-#> <tsfm_forecast> of "sales"
+#> <zuk_forecast> of "sales"
 #> 2 series x horizon, quantile levels 0.1, 0.5, and 0.9
 #>    region       date    .mean .distribution
 #> 1   north 2024-04-30 162.6610   quantile[3]
@@ -133,8 +133,8 @@ forecast(model, panel, h = 14, index = "date", key = "region",
 #> ℹ Supported levels: 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, and 0.9.
 ```
 
-The condition carries the leaf class `tsfm_error_quantile_levels` and the policy
-parent `tsfm_error_recoverable`, so a caller can branch on the outcome without
+The condition carries the leaf class `zuk_error_quantile_levels` and the policy
+parent `zuk_error_recoverable`, so a caller can branch on the outcome without
 matching message text.
 
 ## Into the tidyverts
@@ -208,8 +208,8 @@ median(fabletools::forecast(fits, h = 14)$sales)
 ```{r}
 library(parsnip)
 
-spec <- tsfm_reg() |>
-  set_engine("tsfm",
+spec <- zuk_reg() |>
+  set_engine("zukzeit",
              model_id = "google/timesfm-2.5-200m-pytorch",
              device = "cpu", index = "date", id = "region")
 
@@ -228,11 +228,11 @@ fitted quantile level.
 ## Managing the checkpoint
 
 A constructed handle is held in a bounded, session-level cache — by default one
-model, controlled by `options(tsfm.max_loaded_models)`. That is what keeps a
+model, controlled by `options(zuk.max_loaded_models)`. That is what keeps a
 `tune_grid()` or a per-key `TSFM()` run from reloading 925 MB repeatedly.
 
 ```{r}
-tsfm_cache_status()
+zuk_cache_status()
 #>                                model_id                                 revision
 #> 1       google/timesfm-2.5-200m-pytorch 1d952420fba87f3c6dee4f240de0f1a0fbc790e3
 #> 2 ibm-granite/granite-timeseries-ttm-r2 d6a79570cac0f33d526601cd3a0fc7c80a8f9a2f
@@ -243,18 +243,18 @@ tsfm_cache_status()
 
 `disk_cached` and `resident` are deliberately separate: the first is about
 `hfhub`'s files on disk, the second about a constructed module in this session.
-`tsfm_unload()` releases resident handles and never deletes downloaded files —
+`zuk_unload()` releases resident handles and never deletes downloaded files —
 disk lifetime stays with `hfhub`.
 
 ```{r}
-tsfm_unload()
+zuk_unload()
 ```
 
 ## Reproducibility
 
 Support claims are pinned to immutable revisions. The catalogue resolves
 checkpoint `1d952420fba87f3c6dee4f240de0f1a0fbc790e3`, never a moving `main`,
-and `tsfm_pretrained()` rejects any other revision for a curated model. The
+and `zuk_pretrained()` rejects any other revision for a curated model. The
 committed parity fixtures were generated from official source commit
 `3dae50b20d7a724981e8ea36cda75578f80dd2dc`; see
 `tests/testthat/fixtures/README.md` for the generator, the tolerance, and how to

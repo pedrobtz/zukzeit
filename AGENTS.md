@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-`tsfm` is an R package. Source files live in `R/`: engine contracts and model
+`zukzeit` is an R package. Source files live in `R/`: engine contracts and model
 handles are in `contract.R`, `model.R`, and `capabilities.R`; loading and
 dispatch are in `hub.R` and `registry.R`; execution is in `batching.R`; model
 ports use `arch-<name>.R`. Keep framework integrations isolated in files such
@@ -23,7 +23,7 @@ Rscript -e 'devtools::document()'              # regenerate man/ and NAMESPACE
 Rscript -e 'testthat::test_local(".")'         # run the testthat suite
 Rscript -e 'devtools::check()'                 # local package check
 R CMD build --no-build-vignettes .             # create a source tarball
-R CMD check --as-cran tsfm_*.tar.gz             # release-oriented check
+R CMD check --as-cran zuk_*.tar.gz             # release-oriented check
 ```
 
 Install dependencies with `pak::pak()` or `devtools::install_deps()`. Model
@@ -45,7 +45,7 @@ Keep adapters in `Suggests` and preserve the framework-neutral core.
 
 The suite uses testthat edition 3. Name files `test-<area>.R` and write focused
 `test_that()` cases. Every native model needs two independent gates:
-`tsfm_check_architecture()` conformance and numerical parity against committed,
+`zuk_check_architecture()` conformance and numerical parity against committed,
 revision-pinned reference fixtures. Tests must be deterministic, network-safe,
 and explicit when optional integrations are skipped.
 

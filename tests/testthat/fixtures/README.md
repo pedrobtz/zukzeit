@@ -112,5 +112,5 @@ only the new files.
 
 The two-series fixture also evaluates each context separately and records the
 maximum batch/loop difference. Fixture generation is outside CI. Replay is
-Python-free and explicitly enabled with `TSFM_RUN_CHECKPOINT_TEST=true`; the
+Python-free and explicitly enabled with `ZUK_RUN_CHECKPOINT_TEST=true`; the
 pinned checkpoint must already be available through the Hub cache.

@@ -20,7 +20,7 @@ knitr::opts_chunk$set(eval = has_tuning)
 ```
 
 How much history should a foundation model condition on? More context is not
-always better — it can dilute recent signal and cost compute. Because `tsfm`
+always better — it can dilute recent signal and cost compute. Because `zukzeit`
 exposes `context_length` as a tunable `dials` parameter, you can answer this
 empirically with the standard tidymodels tuning machinery over **rolling-origin**
 (time-aware) resamples, rather than random cross-validation that would leak the
@@ -35,7 +35,7 @@ TimesFM for a result that means something.
 ## Some history to search over
 
 ```{r}
-library(tsfm)
+library(zukzeit)
 
 set.seed(20260904)
 months <- seq(as.Date("2015-01-01"), by = "month", length.out = 96)
@@ -59,8 +59,8 @@ library(tune)
 library(dials)
 library(rsample)
 
-spec <- tsfm_reg(context_length = tune()) |>
-  set_engine("tsfm",
+spec <- zuk_reg(context_length = tune()) |>
+  set_engine("zukzeit",
              model_id = "stub",
              index    = "month",
              id       = "store")

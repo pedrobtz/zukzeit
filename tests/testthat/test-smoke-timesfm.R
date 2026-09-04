@@ -7,9 +7,9 @@
 # about the documented portable baseline.
 
 skip_unless_checkpoint <- function() {
-  skip_if_not(identical(Sys.getenv("TSFM_RUN_CHECKPOINT_TEST"), "true"))
+  skip_if_not(identical(Sys.getenv("ZUK_RUN_CHECKPOINT_TEST"), "true"))
   skip_if_no_torch()
-  record <- tsfm_catalogue_get("google/timesfm-2.5-200m-pytorch")
+  record <- zuk_catalogue_get("google/timesfm-2.5-200m-pytorch")
   skip_if_not(identical(record$state, "supported"), "TimesFM is not supported.")
   invisible(record)
 }
@@ -32,14 +32,14 @@ smoke_panel <- function(n = 96L, keys = c("store_a", "store_b")) {
 
 test_that("journey 1: plain-R panel forecasting from a data frame", {
   record <- skip_unless_checkpoint()
-  model <- tsfm_pretrained(record$model_id, revision = record$revision,
+  model <- zuk_pretrained(record$model_id, revision = record$revision,
                            device = "cpu")
   panel <- smoke_panel()
 
   fc <- forecast(model, panel, h = 14L, index = "date", key = "store",
                  target = "sales", quantile_levels = c(0.1, 0.5, 0.9))
 
-  expect_s3_class(fc, "tsfm_forecast")
+  expect_s3_class(fc, "zuk_forecast")
   expect_identical(nrow(fc), 28L)
   # Stable ordering: keys in sorted order, dates ascending within each key.
   expect_identical(unique(fc$store), c("store_a", "store_b"))
@@ -62,7 +62,7 @@ test_that("journey 2: the batched fable route", {
   record <- skip_unless_checkpoint()
   skip_if_not_installed("fabletools")
   skip_if_not_installed("tsibble")
-  model <- tsfm_pretrained(record$model_id, revision = record$revision,
+  model <- zuk_pretrained(record$model_id, revision = record$revision,
                            device = "cpu")
 
   fc <- forecast(model, smoke_panel(), h = 7L, index = "date", key = "store",
@@ -83,7 +83,7 @@ test_that("journey 3: TSFM() composed inside fabletools::model()", {
   record <- skip_unless_checkpoint()
   skip_if_not_installed("fabletools")
   skip_if_not_installed("tsibble")
-  old <- options(tsfm.max_loaded_models = 1L)
+  old <- options(zuk.max_loaded_models = 1L)
   on.exit(options(old), add = TRUE)
 
   panel <- tsibble::as_tsibble(smoke_panel(), key = "store", index = "date")
@@ -112,8 +112,8 @@ test_that("journey 4: parsnip fit() and predict()", {
 
   panel <- smoke_panel(keys = "store_a")
   spec <- parsnip::set_engine(
-    tsfm_reg(),
-    "tsfm",
+    zuk_reg(),
+    "zukzeit",
     model_id = record$model_id,
     revision = record$revision,
     device = "cpu",
@@ -130,7 +130,7 @@ test_that("journey 4: parsnip fit() and predict()", {
 
 test_that("forecasts are antisymmetric under sign flip", {
   record <- skip_unless_checkpoint()
-  model <- tsfm_pretrained(record$model_id, revision = record$revision,
+  model <- zuk_pretrained(record$model_id, revision = record$revision,
                            device = "cpu")
   # The port symmetrises a forward and a flipped pass (force_flip_invariance),
   # so on a mixed-sign series --- where the positivity clamp applies to neither
@@ -166,9 +166,9 @@ test_that("accelerator inference agrees with the CPU baseline", {
   context <- as.numeric(100 + cumsum(stats::rnorm(96)))
   levels <- c(0.1, 0.5, 0.9)
 
-  cpu <- tsfm_pretrained(record$model_id, revision = record$revision,
+  cpu <- zuk_pretrained(record$model_id, revision = record$revision,
                          device = "cpu")$predict_fn(context, 12L, levels)
-  accel <- tsfm_pretrained(record$model_id, revision = record$revision,
+  accel <- zuk_pretrained(record$model_id, revision = record$revision,
                            device = device)$predict_fn(context, 12L, levels)
 
   expect_true(all(is.finite(accel)))
@@ -184,7 +184,7 @@ test_that("the composed and batched routes agree on one series", {
   panel <- smoke_panel(keys = "store_a")
   levels <- c(0.1, 0.5, 0.9)
 
-  model <- tsfm_pretrained(record$model_id, revision = record$revision,
+  model <- zuk_pretrained(record$model_id, revision = record$revision,
                            device = "cpu")
   batched <- forecast(model, panel, h = 7L, index = "date", key = "store",
                       target = "sales", quantile_levels = levels)

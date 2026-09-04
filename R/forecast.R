@@ -1,7 +1,7 @@
 # The forecast object and the two adapter surfaces.
 #
-# A single inference driver (`tsfm_infer()`) turns per-series histories into a
-# `tsfm_forecast`. That object stores, row-aligned:
+# A single inference driver (`zuk_infer()`) turns per-series histories into a
+# `zuk_forecast`. That object stores, row-aligned:
 #   * key + index                (which series, which future step)
 #   * .mean                      (point forecast)
 #   * .distribution              (a distributional vector, for as_fable())
@@ -14,9 +14,9 @@
 # histories:    named list (by key) of numeric vectors, oldest-first.
 # future_index: named list (by key) of future index values, one per horizon.
 # The actual forward pass (truncation, batching, device) is delegated to
-# tsfm_run_batches(); this driver only assembles the forecast object.
-# Returns a `tsfm_forecast`.
-tsfm_infer <- function(model, histories, future_index, quantile_levels,
+# zuk_run_batches(); this driver only assembles the forecast object.
+# Returns a `zuk_forecast`.
+zuk_infer <- function(model, histories, future_index, quantile_levels,
                        key_name = "key", index_name = "index",
                        target = ".response",
                        batch_size = NULL, device = NULL) {
@@ -30,7 +30,7 @@ tsfm_infer <- function(model, histories, future_index, quantile_levels,
   # against the checkpoint's own trained levels: check_quantile_levels() has
   # already rewritten `quantile_levels` into the checkpoint's spelling, so
   # appending a literal 0.5 can add a second spelling of a level already
-  # requested --- which tsfm_run_batches() then rejects as a duplicate.
+  # requested --- which zuk_run_batches() then rejects as a duplicate.
   median_level <- resolve_median_level(model$capabilities, quantile_levels)
   levels <- sort(unique(c(quantile_levels, median_level)))
   median_col <- match(median_level, levels)
@@ -38,7 +38,7 @@ tsfm_infer <- function(model, histories, future_index, quantile_levels,
   keys <- names(histories)
   unmatched <- setdiff(keys, names(future_index))
   if (length(unmatched)) {
-    tsfm_abort_contract(
+    zuk_abort_contract(
       "Every history must have a future index under the same key.",
       architecture = model$architecture,
       model_id = model$model_id,
@@ -49,7 +49,7 @@ tsfm_infer <- function(model, histories, future_index, quantile_levels,
   }
   horizons <- vapply(keys, function(k) length(future_index[[k]]), integer(1))
 
-  qmats <- tsfm_run_batches(model, histories[keys], horizons, levels,
+  qmats <- zuk_run_batches(model, histories[keys], horizons, levels,
                             batch_size = batch_size, device = device)
 
   key_out <- vector("list", length(keys))
@@ -84,7 +84,7 @@ tsfm_infer <- function(model, histories, future_index, quantile_levels,
   df[[".mean"]] <- mean_vec
   df[[".distribution"]] <- dist
 
-  new_tsfm_forecast(
+  new_zuk_forecast(
     df,
     key_name = key_name,
     index_name = index_name,
@@ -105,7 +105,7 @@ resolve_median_level <- function(caps, levels) {
   if (is.null(supported)) {
     return(0.5)
   }
-  matched <- tsfm_match_quantile_levels(0.5, supported)
+  matched <- zuk_match_quantile_levels(0.5, supported)
   if (!is.na(matched)) {
     return(supported[[matched]])
   }
@@ -115,7 +115,7 @@ resolve_median_level <- function(caps, levels) {
 # Build a distributional vector of predictive distributions from a quantile
 # matrix (rows = observations, cols = `levels`).
 build_distribution <- function(qmatrix, levels) {
-  tsfm_require_namespace(
+  zuk_require_namespace(
     "distributional",
     reason = "It is needed to store predictive distributions."
   )
@@ -130,7 +130,7 @@ build_distribution <- function(qmatrix, levels) {
 
 # ---- forecast object --------------------------------------------------------
 
-new_tsfm_forecast <- function(data, key_name, index_name, target,
+new_zuk_forecast <- function(data, key_name, index_name, target,
                               quantile_levels, quantiles, levels) {
   structure(
     data,
@@ -140,13 +140,13 @@ new_tsfm_forecast <- function(data, key_name, index_name, target,
     quantile_levels = quantile_levels,
     quantiles = quantiles,
     levels = levels,
-    class = c("tsfm_forecast", "data.frame")
+    class = c("zuk_forecast", "data.frame")
   )
 }
 
 #' @export
-print.tsfm_forecast <- function(x, ...) {
-  cli::cli_text("{.cls tsfm_forecast} of {.val {attr(x, 'target')}}")
+print.zuk_forecast <- function(x, ...) {
+  cli::cli_text("{.cls zuk_forecast} of {.val {attr(x, 'target')}}")
   cli::cli_text(
     "{.val {length(unique(x[[attr(x, 'key_name')]]))}} series x horizon, ",
     "quantile levels {.val {attr(x, 'quantile_levels')}}"
@@ -156,7 +156,7 @@ print.tsfm_forecast <- function(x, ...) {
 }
 
 #' @export
-as.data.frame.tsfm_forecast <- function(x, ...) {
+as.data.frame.zuk_forecast <- function(x, ...) {
   attrs <- c("key_name", "index_name", "target", "quantile_levels",
              "quantiles", "levels")
   for (a in attrs) attr(x, a) <- NULL
@@ -167,7 +167,7 @@ as.data.frame.tsfm_forecast <- function(x, ...) {
 # Expand the stored quantile matrix into tidymodels prediction columns:
 # .pred (point), .pred_lower / .pred_upper (extreme requested levels), and one
 # .pred_qXX column per requested quantile.
-tsfm_quantile_columns <- function(fc) {
+zuk_quantile_columns <- function(fc) {
   levels <- attr(fc, "levels")
   qmatrix <- attr(fc, "quantiles")
   out <- data.frame(.pred = fc[[".mean"]], check.names = FALSE)
@@ -203,7 +203,7 @@ quantile_column_names <- function(levels) {
   )
   labels <- paste0(".pred_q", gsub(".", "_", labels, fixed = TRUE))
   if (anyDuplicated(labels)) {
-    tsfm_abort_contract(
+    zuk_abort_contract(
       "Quantile levels do not map to distinct prediction columns.",
       contract = "prediction column names",
       expected = "one column per requested level",
@@ -215,24 +215,24 @@ quantile_column_names <- function(levels) {
 
 # ---- fable adapter ----------------------------------------------------------
 
-#' Convert a tsfm forecast to a fable
+#' Convert a zukzeit forecast to a fable
 #'
-#' A method for [fabletools::as_fable()], so a `tsfm_forecast` flows into
+#' A method for [fabletools::as_fable()], so a `zuk_forecast` flows into
 #' `fabletools::accuracy()`, reconciliation, and the tidyverts plotting stack.
 #'
 #' fabletools is an optional adapter dependency, so this method is registered
 #' lazily from `.onLoad()` via [vctrs::s3_register()] — it becomes available as
-#' soon as fabletools is loaded, and its absence never blocks loading tsfm.
-#' Call it as `fabletools::as_fable(x)`; tsfm deliberately does not define a
+#' soon as fabletools is loaded, and its absence never blocks loading zukzeit.
+#' Call it as `fabletools::as_fable(x)`; zukzeit deliberately does not define a
 #' competing `as_fable()` generic.
 #'
-#' @param x A `tsfm_forecast`.
+#' @param x A `zuk_forecast`.
 #' @param ... Unused.
 #' @return A `fable` object.
-#' @name as_fable.tsfm_forecast
+#' @name as_fable.zuk_forecast
 #' @keywords internal
 #' @examplesIf requireNamespace("fabletools", quietly = TRUE) && requireNamespace("tsibble", quietly = TRUE)
-#' model <- tsfm_pretrained("stub")
+#' model <- zuk_pretrained("stub")
 #' history <- tsibble::tsibble(
 #'   month = tsibble::yearmonth(seq(as.Date("2020-01-01"), by = "month",
 #'                                  length.out = 36)),
@@ -240,12 +240,12 @@ quantile_column_names <- function(levels) {
 #'   index = month
 #' )
 #'
-#' # Call it qualified: tsfm registers a method rather than a rival generic.
+#' # Call it qualified: zukzeit registers a method rather than a rival generic.
 #' fabletools::as_fable(forecast(model, history, h = 3))
 #'
-#' tsfm_unload("stub")
-as_fable.tsfm_forecast <- function(x, ...) {
-  tsfm_require_namespace(
+#' zuk_unload("stub")
+as_fable.zuk_forecast <- function(x, ...) {
+  zuk_require_namespace(
     c("tsibble", "fabletools"),
     reason = "They are needed to convert forecasts to a fable."
   )
@@ -261,7 +261,7 @@ as_fable.tsfm_forecast <- function(x, ...) {
   # Keep `.mean`. `as_fable()` does not synthesise it the way
   # `fabletools::forecast()` does, so dropping it here produced a fable whose
   # `.mean` was silently NULL. The retained value is the engine's exact median
-  # (see tsfm_infer()), which is also `median()` of the distribution beside it.
+  # (see zuk_infer()), which is also `median()` of the distribution beside it.
 
   # Inject symbols so tsibble's tidy-select interface does not treat character
   # column names as deprecated external selection vectors.
@@ -287,7 +287,7 @@ as_fable.tsfm_forecast <- function(x, ...) {
 # The `forecast()` verb is shared across the R forecasting ecosystem
 # (fabletools, modeltime, forecast) via the generic that lives in `generics`.
 # Re-exporting it — rather than defining a competing local generic — is what
-# keeps dispatch correct when tsfm is attached alongside those packages.
+# keeps dispatch correct when zukzeit is attached alongside those packages.
 
 #' @importFrom generics forecast
 #' @export
@@ -296,22 +296,22 @@ generics::forecast
 #' Forecast future values with a foundation model
 #'
 #' The convenience surface: hand a panel of history and a horizon, get a
-#' `tsfm_forecast` back. This is a method for [generics::forecast()], the same
-#' generic fabletools and modeltime dispatch on, so attaching tsfm alongside
+#' `zuk_forecast` back. This is a method for [generics::forecast()], the same
+#' generic fabletools and modeltime dispatch on, so attaching zukzeit alongside
 #' them never masks the verb.
 #'
-#' @param object A `tsfm_model`.
+#' @param object A `zuk_model`.
 #' @param new_data A `tsibble` (index/key inferred) or a `data.frame`.
 #' @param h Integer forecast horizon.
 #' @param quantile_levels Numeric vector of quantile levels in `(0, 1)`.
 #' @param index,key,target Column names; required for the `data.frame` method,
 #'   inferred for a `tsibble`.
-#' @param batch_size,device Passed to [tsfm_run_batches()].
+#' @param batch_size,device Passed to [zuk_run_batches()].
 #' @param ... Unused.
-#' @return A `tsfm_forecast`.
+#' @return A `zuk_forecast`.
 #' @export
 #' @examples
-#' model <- tsfm_pretrained("stub")
+#' model <- zuk_pretrained("stub")
 #'
 #' # A plain data frame needs its index and target columns named.
 #' history <- data.frame(day = 1:60, sales = cumsum(rep(2, 60)) + 100)
@@ -328,8 +328,8 @@ generics::forecast
 #' )
 #' forecast(model, panel, h = 3, index = "day", key = "store", target = "sales")
 #'
-#' tsfm_unload("stub")
-forecast.tsfm_model <- function(object, new_data, h = 1L,
+#' zuk_unload("stub")
+forecast.zuk_model <- function(object, new_data, h = 1L,
                                 quantile_levels = c(0.1, 0.5, 0.9),
                                 index = NULL, key = NULL, target = NULL,
                                 batch_size = NULL, device = NULL, ...) {
@@ -345,7 +345,7 @@ forecast.tsfm_model <- function(object, new_data, h = 1L,
   histories <- split(spec$data[[spec$target]], spec$data[[spec$key]], drop = TRUE)
   future_index <- future_index_for(spec, h)
 
-  tsfm_infer(
+  zuk_infer(
     object,
     histories = histories,
     future_index = future_index,
@@ -363,7 +363,7 @@ forecast.tsfm_model <- function(object, new_data, h = 1L,
 # when none is supplied so downstream code always groups by a key.
 panel_spec <- function(new_data, index = NULL, key = NULL, target = NULL) {
   if (inherits(new_data, "tbl_ts")) {
-    tsfm_require_namespace("tsibble")
+    zuk_require_namespace("tsibble")
     index <- index %||% as.character(tsibble::index_var(new_data))
     key_vars <- tsibble::key_vars(new_data)
     key <- key %||% (if (length(key_vars)) key_vars[[1]] else NULL)
@@ -372,7 +372,7 @@ panel_spec <- function(new_data, index = NULL, key = NULL, target = NULL) {
     data <- as.data.frame(new_data)
   } else {
     if (!inherits(new_data, "data.frame")) {
-      tsfm_abort_capability(
+      zuk_abort_capability(
         "{.arg new_data} must be a data frame or tsibble.",
         capability = "input_data",
         requested = class(new_data),
@@ -380,7 +380,7 @@ panel_spec <- function(new_data, index = NULL, key = NULL, target = NULL) {
       )
     }
     if (is.null(index) || is.null(target)) {
-      tsfm_abort_capability(
+      zuk_abort_capability(
         "For a {.cls data.frame}, both {.arg index} and {.arg target} are required.",
         capability = "input_columns",
         requested = c(index = index %||% NA_character_, target = target %||% NA_character_),
@@ -403,7 +403,7 @@ panel_spec <- function(new_data, index = NULL, key = NULL, target = NULL) {
   missing <- names(fields)[invalid_names]
   if (!length(missing)) missing <- setdiff(unlist(fields), names(data))
   if (length(missing)) {
-    tsfm_abort_capability(
+    zuk_abort_capability(
       "Required column{?s} {.val {missing}} {?is/are} not available.",
       capability = "input_columns",
       requested = missing,
@@ -411,7 +411,7 @@ panel_spec <- function(new_data, index = NULL, key = NULL, target = NULL) {
     )
   }
   if (!is.numeric(data[[target]])) {
-    tsfm_abort_capability(
+    zuk_abort_capability(
       "Target {.val {target}} must be numeric.",
       capability = "target_type",
       requested = class(data[[target]]),
@@ -443,7 +443,7 @@ extend_index <- function(idx, h, call = rlang::caller_env()) {
   if (n == 0L) return(idx[0])
   if (!is.numeric(idx) &&
       !inherits(idx, c("Date", "POSIXct", "vctrs_vctr"))) {
-    tsfm_abort_capability(
+    zuk_abort_capability(
       c(
         "Cannot extend an index of class {.cls {class(idx)}}.",
         "i" = "Supported index types are numeric, integer, {.cls Date}, {.cls POSIXct}, and tsibble's calendar types."
@@ -461,7 +461,7 @@ extend_index <- function(idx, h, call = rlang::caller_env()) {
     error = function(e) NULL
   )
   if (is.null(extended) || length(extended) != h) {
-    tsfm_abort_capability(
+    zuk_abort_capability(
       c(
         "Could not extend a {.cls {class(idx)}} index by {h} step{?s} of {.val {step}}.",
         "i" = "Supply a regularly spaced index, or forecast from a plain data frame with a numeric index."

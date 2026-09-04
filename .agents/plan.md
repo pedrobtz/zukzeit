@@ -1,6 +1,6 @@
-# `tsfm` engine plan
+# `zukzeit` engine plan
 
-`tsfm` provides a native R engine for loading and running open time-series
+`zukzeit` provides a native R engine for loading and running open time-series
 foundation models. This document fixes the package architecture and public
 contract. [`roadmap.md`](./roadmap.md) owns release order and gates;
 [`consumer-api.md`](./consumer-api.md) specifies the surface downstream
@@ -12,13 +12,13 @@ packages rely on.
 
 ## Mission
 
-Given a supported checkpoint and numeric history, `tsfm` downloads immutable
+Given a supported checkpoint and numeric history, `zukzeit` downloads immutable
 weights, constructs a native R `torch` module, and returns trustworthy point
 and quantile forecasts through a stable, framework-neutral interface.
 
 The package fills the model-runtime gap in R. Existing packages already provide
 temporal data structures, resampling, metrics, reconciliation, and deployment;
-`tsfm` should integrate with them instead of reproducing them.
+`zukzeit` should integrate with them instead of reproducing them.
 
 The first release proves a small, complementary portfolio: TimesFM 2.5 as the
 general quantile baseline, Toto 2.0 4M as the efficient model, and Chronos-2 as
@@ -44,7 +44,7 @@ parity against a pinned upstream implementation.
    expensive lifecycle steps are explicit, reuse is bounded, and inference is
    deterministic, quiet, and interruptible.
 7. **Curated discovery.** The package owns the checkpoint catalogue. Runtime
-   constructor registration never changes what `tsfm_models()` reports, so
+   constructor registration never changes what `zuk_models()` reports, so
    downstream selection remains reproducible and `supported` retains one
    release-controlled meaning.
 
@@ -53,25 +53,25 @@ parity against a pinned upstream implementation.
 ### Discovery and lifecycle
 
 ```r
-tsfm_models(state = "supported")
-tsfm_download(model_id, revision = NULL, progress = interactive())
-tsfm_pretrained(model_id, revision = NULL, device = NULL, reuse = TRUE, ...)
-tsfm_cache_status()
-tsfm_unload(model_id = NULL, revision = NULL, device = NULL)
+zuk_models(state = "supported")
+zuk_download(model_id, revision = NULL, progress = interactive())
+zuk_pretrained(model_id, revision = NULL, device = NULL, reuse = TRUE, ...)
+zuk_cache_status()
+zuk_unload(model_id = NULL, revision = NULL, device = NULL)
 ```
 
-`tsfm_models()` is a static checkpoint catalogue and never loads a config,
+`zuk_models()` is a static checkpoint catalogue and never loads a config,
 weights, or model. Supported rows include immutable revision, architecture,
 capabilities, context and quantile limits, parameter and download estimates,
 offline cache status, and weight licence.
 
-The catalogue is package-owned. `tsfm_register_arch()` changes only the
+The catalogue is package-owned. `zuk_register_arch()` changes only the
 constructor mapping used after a curated entry resolves; it does not add model
 IDs or support claims. This keeps `tsai` discovery stable across installed and
 loaded packages.
 
-`hfhub` owns downloaded files. `tsfm` owns a bounded in-process LRU of
-constructed handles, configured by `options(tsfm.max_loaded_models = 1L)`.
+`hfhub` owns downloaded files. `zukzeit` owns a bounded in-process LRU of
+constructed handles, configured by `options(zuk.max_loaded_models = 1L)`.
 Disk presence and resident state are reported separately.
 
 ### Model and execution contract
@@ -83,7 +83,7 @@ predict_batch_fn(contexts, horizons, quantile_levels, device)
   -> list(matrix[h, q])
 ```
 
-A `tsfm_model` records checkpoint identity, resolved revision and device,
+A `zuk_model` records checkpoint identity, resolved revision and device,
 capabilities, preprocessing configuration, and callable single/batch inference
 functions. Validation rejects unsupported requests before download or tensor
 work where possible. Modules run in evaluation mode with gradients disabled.
@@ -94,19 +94,19 @@ past/future covariates. Its exact R shape must be frozen in this plan,
 Chronos-2 implementation begins. The extension must leave contract-v1 model
 handles and univariate `forecast()` calls source-compatible.
 
-Every engine error inherits from `tsfm_error` and exactly one policy family:
-`tsfm_error_recoverable`, `tsfm_error_external`, or `tsfm_error_internal`.
+Every engine error inherits from `zuk_error` and exactly one policy family:
+`zuk_error_recoverable`, `zuk_error_external`, or `zuk_error_internal`.
 Leaf classes and structured fields are defined in `consumer-api.md`; consumers
 never need to inspect error messages.
 
 ### Forecast and adapter contract
 
-The core returns `tsfm_forecast`, preserving key, index, target, horizon,
+The core returns `zuk_forecast`, preserving key, index, target, horizon,
 quantile, model ID, and revision metadata. Required `0.1.0` surfaces are:
 
 - `forecast(model, data, h)` for single-series and batched panel execution;
 - `as.data.frame()` and `fabletools::as_fable()` for result consumption;
-- `tsfm_reg()` plus working parsnip `fit()` and `predict()` methods;
+- `zuk_reg()` plus working parsnip `fit()` and `predict()` methods;
 - `TSFM(formula, ...)` for composition inside `fabletools::model()`.
 
 The fable model-definition path fits per key and therefore does not batch a
@@ -123,7 +123,7 @@ Hub manifest -> safetensors -> architecture registry -> resident-handle LRU
                     |
 validation -> preprocessing -> batching/device -> native forward pass
                     |
-             tsfm_forecast
+             zuk_forecast
           /         |          \
      plain R     fabletools    parsnip
 ```
@@ -157,7 +157,7 @@ consumer and a design stress test. It must be able to:
 5. reuse an already-constructed model across resamples and fable keys; and
 6. compose `TSFM()` with statistical models in a fable workflow.
 
-`tsfm` does not select a model or implement fallback policy. It exposes the
+`zukzeit` does not select a model or implement fallback policy. It exposes the
 metadata and typed outcomes required for `tsai` to make those decisions. It
 contains no prompts, LLM tools, agent logic, or dependency on `tsai`.
 

@@ -1,8 +1,8 @@
-test_that("tsfm_pretrained('stub') loads without network or torch", {
-  model <- tsfm_pretrained("stub")
-  expect_s3_class(model, "tsfm_model")
+test_that("zuk_pretrained('stub') loads without network or torch", {
+  model <- zuk_pretrained("stub")
+  expect_s3_class(model, "zuk_model")
   expect_identical(model$architecture, "stub")
-  expect_identical(tsfm_capabilities(model)$quantiles, "native")
+  expect_identical(zuk_capabilities(model)$quantiles, "native")
 })
 
 test_that("stub forecasts are monotone quantiles centred on the last value", {

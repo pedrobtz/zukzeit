@@ -7,17 +7,17 @@
 conforming_arch <- function(max_context = 128L,
                             predict_fn = NULL,
                             predict_batch_fn = NULL,
-                            contract_version = tsfm_contract_version()) {
+                            contract_version = zuk_contract_version()) {
   predict_fn <- predict_fn %||% function(context, h, quantile_levels) {
     if (length(context) == 0L) stop("empty context")
     last <- context[length(context)]
     outer(rep(last, h), stats::qnorm(quantile_levels), `+`)
   }
   function(config, weights) {
-    new_tsfm_model(
+    new_zuk_model(
       architecture     = "conforming",
       config           = config,
-      capabilities     = new_tsfm_capabilities("conforming", max_context = max_context),
+      capabilities     = new_zuk_capabilities("conforming", max_context = max_context),
       predict_fn       = predict_fn,
       predict_batch_fn = predict_batch_fn,
       contract_version = contract_version
@@ -29,7 +29,7 @@ conforming_arch <- function(max_context = 128L,
 # right for a user at the console but noise in a suite, so swallow it here --- the
 # warn-vs-abort behaviour itself is asserted in its own test at the bottom.
 check_report <- function(constructor, ...) {
-  suppressWarnings(tsfm_check_architecture(constructor, ..., error = FALSE))
+  suppressWarnings(zuk_check_architecture(constructor, ..., error = FALSE))
 }
 
 # Names of the checks that failed, for terse assertions below.
@@ -46,7 +46,7 @@ test_that("a conforming architecture passes every check", {
 test_that("the built-in stub satisfies the contract", {
   # error = TRUE: the stub failing the contract should break the build.
   expect_no_error(
-    tsfm_check_architecture(
+    zuk_check_architecture(
       function(config, weights) stub_constructor(config, weights),
       error = TRUE
     )
@@ -62,16 +62,16 @@ test_that("the TTM scaffold does not yet satisfy the contract", {
 
 })
 
-test_that("a non-tsfm_model constructor fails fast", {
+test_that("a non-zuk_model constructor fails fast", {
   report <- check_report(function(config, weights) list())
-  expect_true("constructor returns a tsfm_model" %in% failures(report))
+  expect_true("constructor returns a zuk_model" %in% failures(report))
   # Construction failing short-circuits the rest rather than cascading.
   expect_identical(nrow(report), 1L)
 })
 
 test_that("a constructor that errors is reported, not propagated", {
   report <- check_report(function(config, weights) stop("boom"))
-  expect_true("constructor returns a tsfm_model" %in% failures(report))
+  expect_true("constructor returns a zuk_model" %in% failures(report))
   expect_match(report$message[1], "boom")
 })
 
@@ -171,15 +171,15 @@ test_that("error = TRUE aborts, error = FALSE reports every problem at once", {
   broken <- conforming_arch(predict_fn = function(context, h, quantile_levels) {
     matrix(0, nrow = h + 1L, ncol = length(quantile_levels))
   })
-  expect_error(tsfm_check_architecture(broken, error = TRUE), "contract")
-  expect_warning(report <- tsfm_check_architecture(broken, error = FALSE), "contract")
+  expect_error(zuk_check_architecture(broken, error = TRUE), "contract")
+  expect_warning(report <- zuk_check_architecture(broken, error = FALSE), "contract")
   expect_gt(length(failures(report)), 1L)
 })
 
-test_that("new_tsfm_model stamps the current contract version", {
+test_that("new_zuk_model stamps the current contract version", {
   model <- conforming_arch()(list(), NULL)
-  expect_identical(model$contract_version, tsfm_contract_version())
-  expect_identical(tsfm_contract_version()$major, 1L)
+  expect_identical(model$contract_version, zuk_contract_version())
+  expect_identical(zuk_contract_version()$major, 1L)
 })
 
 test_that("the conformance harness leaves the caller's RNG state alone", {
@@ -187,10 +187,10 @@ test_that("the conformance harness leaves the caller's RNG state alone", {
   # default argument of an exported function: leaving set.seed() in place
   # silently reseeded whatever session called the gate.
   arch <- function(config, weights) {
-    new_tsfm_model(
+    new_zuk_model(
       architecture = "seedless",
       config = config,
-      capabilities = new_tsfm_capabilities("seedless", max_context = 128L),
+      capabilities = new_zuk_capabilities("seedless", max_context = 128L),
       predict_fn = function(context, h, quantile_levels) {
         if (length(context) == 0L) stop("empty context")
         outer(rep(context[length(context)], h), stats::qnorm(quantile_levels), `+`)
@@ -203,7 +203,7 @@ test_that("the conformance harness leaves the caller's RNG state alone", {
 
   set.seed(42)
   before <- get(".Random.seed", envir = globalenv())
-  suppressMessages(tsfm_check_architecture(arch, error = FALSE))
+  suppressMessages(zuk_check_architecture(arch, error = FALSE))
 
   expect_identical(get(".Random.seed", envir = globalenv()), before)
   expect_equal(runif(3), expected)
@@ -211,10 +211,10 @@ test_that("the conformance harness leaves the caller's RNG state alone", {
 
 test_that("an unseeded session is left unseeded", {
   arch <- function(config, weights) {
-    new_tsfm_model(
+    new_zuk_model(
       architecture = "seedless",
       config = config,
-      capabilities = new_tsfm_capabilities("seedless", max_context = 128L),
+      capabilities = new_zuk_capabilities("seedless", max_context = 128L),
       predict_fn = function(context, h, quantile_levels) {
         if (length(context) == 0L) stop("empty context")
         outer(rep(context[length(context)], h), stats::qnorm(quantile_levels), `+`)
@@ -228,6 +228,6 @@ test_that("an unseeded session is left unseeded", {
     rm(".Random.seed", envir = globalenv())
   }
 
-  suppressMessages(tsfm_check_architecture(arch, error = FALSE))
+  suppressMessages(zuk_check_architecture(arch, error = FALSE))
   expect_false(exists(".Random.seed", envir = globalenv(), inherits = FALSE))
 })

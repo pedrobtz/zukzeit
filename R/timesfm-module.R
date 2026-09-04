@@ -1,5 +1,5 @@
 # Portions derived from TimesFM, Copyright 2025 Google LLC.
-# Translated and modified for R/torch by the tsfm authors.
+# Translated and modified for R/torch by the zukzeit authors.
 # Licensed under Apache-2.0; see inst/COPYRIGHTS and
 # inst/LICENSES/Apache-2.0.txt.
 
@@ -64,7 +64,7 @@ timesfm_rope <- torch::nn_module(
   "timesfm_rope",
   initialize = function(embedding_dims) {
     if (embedding_dims %% 2L != 0L) {
-      tsfm_abort_checkpoint(
+      zuk_abort_checkpoint(
         "TimesFM rotary embeddings require an even head dimension.",
         tensor = "config.json",
         expected = "an even head_dim",
@@ -95,7 +95,7 @@ timesfm_attention <- torch::nn_module(
   "timesfm_attention",
   initialize = function(model_dim, num_heads, head_dim, epsilon = 1e-6) {
     if (model_dim != num_heads * head_dim) {
-      tsfm_abort_checkpoint(
+      zuk_abort_checkpoint(
         "TimesFM attention dimensions are incompatible.",
         tensor = "config.json",
         expected = model_dim,

@@ -1,7 +1,7 @@
 # Conformance harness for the architecture contract.
 #
 # An engine is only as good as its guarantee to architecture authors. This file
-# turns ?`tsfm-architecture-contract` from prose into an executable gate: every
+# turns ?`zuk-architecture-contract` from prose into an executable gate: every
 # built-in architecture runs it, and external implementations can run the same
 # check without needing to read the engine's internals.
 
@@ -61,9 +61,9 @@ with_fixed_seed <- function(seed, expr) {
   expr
 }
 
-#' Verify an architecture against the tsfm contract
+#' Verify an architecture against the zukzeit contract
 #'
-#' Runs the invariants in `?`[tsfm-architecture-contract] against an
+#' Runs the invariants in `?`[zuk-architecture-contract] against an
 #' architecture constructor and reports which hold. Use it while implementing a
 #' new architecture, and in that architecture's test suite as a regression gate.
 #'
@@ -73,7 +73,7 @@ with_fixed_seed <- function(seed, expr) {
 #' fixtures (see `tests/testthat/fixtures/README.md`).
 #'
 #' @param constructor A function `(config, weights)` returning a
-#'   [new_tsfm_model()], as passed to [tsfm_register_arch()].
+#'   [new_zuk_model()], as passed to [zuk_register_arch()].
 #' @param config A config list handed to `constructor`. Supply whatever the
 #'   architecture needs; the default is empty.
 #' @param weights Weights handed to `constructor`. Default `NULL`.
@@ -91,15 +91,15 @@ with_fixed_seed <- function(seed, expr) {
 #' @return Invisibly, a data frame with one row per check: `name`, `ok`
 #'   (`TRUE`, `FALSE`, or `NA` for not applicable), and `message`.
 #'
-#' @seealso `?`[tsfm-architecture-contract]
+#' @seealso `?`[zuk-architecture-contract]
 #' @export
 #' @examples
 #' # A minimal conforming architecture: last value, with a Gaussian spread.
 #' demo_arch <- function(config, weights) {
-#'   new_tsfm_model(
+#'   new_zuk_model(
 #'     architecture = "demo",
 #'     config = config,
-#'     capabilities = new_tsfm_capabilities("demo", max_context = 128L),
+#'     capabilities = new_zuk_capabilities("demo", max_context = 128L),
 #'     predict_fn = function(context, h, quantile_levels) {
 #'       if (length(context) == 0L) stop("empty context")
 #'       last <- context[length(context)]
@@ -108,9 +108,9 @@ with_fixed_seed <- function(seed, expr) {
 #'   )
 #' }
 #'
-#' report <- tsfm_check_architecture(demo_arch, error = FALSE)
+#' report <- zuk_check_architecture(demo_arch, error = FALSE)
 #' report
-tsfm_check_architecture <- function(constructor,
+zuk_check_architecture <- function(constructor,
                                     config = list(),
                                     weights = NULL,
                                     context = default_check_context(),
@@ -120,7 +120,7 @@ tsfm_check_architecture <- function(constructor,
                                     crossing_tolerance = tolerance,
                                     error = !interactive()) {
   if (!is.function(constructor)) {
-    tsfm_abort_contract(
+    zuk_abort_contract(
       "{.arg constructor} must be a function of {.code (config, weights)}.",
       contract = "conformance input",
       expected = "function(config, weights)",
@@ -135,11 +135,11 @@ tsfm_check_architecture <- function(constructor,
   # --- construction --------------------------------------------------------
   built <- try_value(function() constructor(config, weights))
   model <- built$value
-  checks$constructor <- run_check("constructor returns a tsfm_model", function() {
+  checks$constructor <- run_check("constructor returns a zuk_model", function() {
     if (!built$ok) {
       sprintf("Constructor raised an error: %s", built$message)
-    } else if (!inherits(model, "tsfm_model")) {
-      sprintf("Got a <%s>; expected a <tsfm_model> from new_tsfm_model().",
+    } else if (!inherits(model, "zuk_model")) {
+      sprintf("Got a <%s>; expected a <zuk_model> from new_zuk_model().",
               paste(class(model), collapse = "/"))
     } else {
       NULL
@@ -151,8 +151,8 @@ tsfm_check_architecture <- function(constructor,
 
   checks$capabilities <- run_check("declares capabilities", function() {
     caps <- model$capabilities
-    if (!inherits(caps, "tsfm_capabilities")) {
-      "capabilities must be a <tsfm_capabilities> from new_tsfm_capabilities()."
+    if (!inherits(caps, "zuk_capabilities")) {
+      "capabilities must be a <zuk_capabilities> from new_zuk_capabilities()."
     } else if (!is.finite(caps$max_context) || caps$max_context <= 0L) {
       sprintf("max_context must be a positive integer; got %s.", caps$max_context)
     } else {
@@ -163,10 +163,10 @@ tsfm_check_architecture <- function(constructor,
   checks$contract_version <- run_check("stamps a contract version", function() {
     v <- model$contract_version
     if (is.null(v)) {
-      "No contract_version on the model handle; construct it with new_tsfm_model()."
-    } else if (package_version(v)$major != tsfm_contract_version()$major) {
-      sprintf("Architecture targets contract %s; this tsfm implements %s.",
-              format(v), format(tsfm_contract_version()))
+      "No contract_version on the model handle; construct it with new_zuk_model()."
+    } else if (package_version(v)$major != zuk_contract_version()$major) {
+      sprintf("Architecture targets contract %s; this zukzeit implements %s.",
+              format(v), format(zuk_contract_version()))
     } else {
       NULL
     }
@@ -272,7 +272,7 @@ tsfm_check_architecture <- function(constructor,
       if (!isTRUE(checks$shape$ok)) {
         return("Cannot compare: the predict_fn probe did not produce a valid forecast.")
       }
-      device <- tsfm_resolve_device(model$device %||% NULL)
+      device <- zuk_resolve_device(model$device %||% NULL)
       batched <- model$predict_batch_fn(list(probe, probe), c(h, h),
                                         quantile_levels, device = device)
       if (!is.list(batched) || length(batched) != 2L) {
@@ -330,7 +330,7 @@ finish_check <- function(checks, error) {
 
   if (nrow(failed) == 0L) {
     cli::cli_alert_success(
-      "Architecture satisfies the tsfm contract ({sum(report$ok, na.rm = TRUE)} check{?s} passed)."
+      "Architecture satisfies the zukzeit contract ({sum(report$ok, na.rm = TRUE)} check{?s} passed)."
     )
     return(invisible(report))
   }
@@ -340,12 +340,12 @@ finish_check <- function(checks, error) {
     rep("x", nrow(failed))
   )
   msg <- c(
-    "Architecture violates the tsfm contract ({nrow(failed)} of {nrow(report)} check{?s} failed).",
+    "Architecture violates the zukzeit contract ({nrow(failed)} of {nrow(report)} check{?s} failed).",
     bullets,
-    "i" = "See {.code ?`tsfm-architecture-contract`}."
+    "i" = "See {.code ?`zuk-architecture-contract`}."
   )
   if (isTRUE(error)) {
-    tsfm_abort_contract(
+    zuk_abort_contract(
       msg,
       contract = "architecture conformance",
       expected = "all checks pass",

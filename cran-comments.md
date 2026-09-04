@@ -31,7 +31,7 @@ file is finalized for CRAN.
   matrix exercises both runtime-absent and runtime-installed configurations.
 * Numerical parity against the pinned TimesFM reference, and every test that
   loads the 925 MB checkpoint, are opt-in behind
-  `TSFM_RUN_CHECKPOINT_TEST=true`. They were run locally against the Hub cache
+  `ZUK_RUN_CHECKPOINT_TEST=true`. They were run locally against the Hub cache
   and pass: five golden fixtures on CPU within the recorded `atol`/`rtol`
   budget, contract conformance against the real handle, and the four documented
   user workflows end to end.
@@ -40,9 +40,9 @@ file is finalized for CRAN.
 
 * Every exported function has a runnable example. They use the weight-free
   `stub` fixture, so no example downloads anything, contacts the Hub, or needs
-  the LibTorch runtime. `tsfm_download()` is the only `\dontrun{}`, because it
+  the LibTorch runtime. `zuk_download()` is the only `\dontrun{}`, because it
   transfers a 925 MB checkpoint.
-* `tsfm_models()` and `tsfm_cache_status()` report whether a checkpoint is
+* `zuk_models()` and `zuk_cache_status()` report whether a checkpoint is
   already on disk. They probe the `hfhub` cache with `local_files_only = TRUE`
   and create nothing: a check run under a fresh `HOME` leaves it empty.
 * Two vignettes evaluate their code against the `stub` fixture and need no

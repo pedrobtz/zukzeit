@@ -15,7 +15,7 @@ stub_predict_batch <- function(context, h, quantile_levels) {
   h <- as.integer(h)
 
   if (length(context) == 0L) {
-    tsfm_abort_capability(
+    zuk_abort_capability(
       "The stub model requires at least one observed value of context.",
       model_id = "stub",
       capability = "context",
@@ -43,7 +43,7 @@ stub_predict_batch <- function(context, h, quantile_levels) {
 
 stub_constructor <- function(config, weights = NULL) {
   max_context <- as.integer(config$max_context %||% 512L)
-  caps <- new_tsfm_capabilities(
+  caps <- new_zuk_capabilities(
     architecture = "stub",
     max_context  = max_context,
     quantiles    = "native",
@@ -53,7 +53,7 @@ stub_constructor <- function(config, weights = NULL) {
     fine_tunable = FALSE,
     license      = "MIT"
   )
-  new_tsfm_model(
+  new_zuk_model(
     architecture = "stub",
     config       = config,
     capabilities = caps,

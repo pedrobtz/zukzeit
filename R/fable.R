@@ -12,26 +12,26 @@
 #   * `forecast(model, panel, h) |> fabletools::as_fable()` --- one batched call
 #     across every series. It is the fast route.
 #
-# `TSFM()` calls `tsfm_pretrained(reuse = TRUE)` per key, so the checkpoint is
+# `TSFM()` calls `zuk_pretrained(reuse = TRUE)` per key, so the checkpoint is
 # constructed once and served from the resident LRU for every remaining key.
 # Without that reuse a 200-key panel would load a 925 MB checkpoint 200 times.
 
 # The model class is built lazily: fabletools is an optional adapter dependency,
-# so it must not be needed to install or load tsfm. Memoised because the class
+# so it must not be needed to install or load zukzeit. Memoised because the class
 # object is immutable and identical across calls --- dispatch happens on the
 # fitted object's own class, not on this generator.
-.tsfm_fable_class <- new.env(parent = emptyenv())
+.zuk_fable_class <- new.env(parent = emptyenv())
 
-tsfm_fable_model_class <- function() {
-  if (!is.null(.tsfm_fable_class$class)) {
-    return(.tsfm_fable_class$class)
+zuk_fable_model_class <- function() {
+  if (!is.null(.zuk_fable_class$class)) {
+    return(.zuk_fable_class$class)
   }
   cls <- fabletools::new_model_class(
     "TSFM",
     train = train_tsfm,
     specials = fabletools::new_specials()
   )
-  .tsfm_fable_class$class <- cls
+  .zuk_fable_class$class <- cls
   cls
 }
 
@@ -40,13 +40,13 @@ tsfm_fable_model_class <- function() {
 train_tsfm <- function(.data, specials, model_id, revision = NULL,
                        quantile_levels = NULL, device = NULL, reuse = TRUE,
                        ...) {
-  tsfm_require_namespace(
+  zuk_require_namespace(
     "tsibble",
     reason = "It is needed to read the response from a tsibble."
   )
   response <- tsibble::measured_vars(.data)
   if (length(response) != 1L) {
-    tsfm_abort_capability(
+    zuk_abort_capability(
       "Contract v1 supports exactly one response column; got {length(response)}.",
       model_id = model_id,
       capability = "multivariate",
@@ -56,7 +56,7 @@ train_tsfm <- function(.data, specials, model_id, revision = NULL,
   }
   y <- .data[[response]]
   if (!is.numeric(y)) {
-    tsfm_abort_capability(
+    zuk_abort_capability(
       "Response {.val {response}} must be numeric; got {.cls {class(y)}}.",
       model_id = model_id,
       capability = "target_type",
@@ -65,7 +65,7 @@ train_tsfm <- function(.data, specials, model_id, revision = NULL,
     )
   }
 
-  model <- tsfm_pretrained(
+  model <- zuk_pretrained(
     model_id,
     revision = revision,
     device = device,
@@ -101,7 +101,7 @@ train_tsfm <- function(.data, specials, model_id, revision = NULL,
 #' @section Per key, not batched:
 #' fabletools evaluates one key at a time, so `TSFM()` runs the engine once per
 #' series. The checkpoint itself is loaded once and reused from the bounded
-#' resident cache (see [tsfm_pretrained()] and [tsfm_cache_status()]), but the
+#' resident cache (see [zuk_pretrained()] and [zuk_cache_status()]), but the
 #' forward passes are not batched across series. For a wide panel, prefer the
 #' batched route:
 #'
@@ -113,7 +113,7 @@ train_tsfm <- function(.data, specials, model_id, revision = NULL,
 #' Every route carries the same predictive distribution, but they label the
 #' point forecast differently. `fabletools` derives `.mean` from the
 #' distribution, so a `TSFM()` fable reports the distribution's **mean**;
-#' [forecast.tsfm_model()] and [fabletools::as_fable()] report the engine's
+#' [forecast.zuk_model()] and [fabletools::as_fable()] report the engine's
 #' exactly evaluated **median**. With few quantile levels the two diverge on a
 #' skewed forecast. `median()` of the distribution recovers the engine's point
 #' forecast on any route:
@@ -124,31 +124,31 @@ train_tsfm <- function(.data, specials, model_id, revision = NULL,
 #' ```
 #'
 #' @param formula A model formula naming the response, for example `value`.
-#' @param model_id Checkpoint id, as listed by [tsfm_models()]. Use `"stub"` for
+#' @param model_id Checkpoint id, as listed by [zuk_models()]. Use `"stub"` for
 #'   the weight-free test fixture.
 #' @param revision `NULL` for the catalogue's immutable revision, or that exact
 #'   revision string.
 #' @param quantile_levels Quantile levels to forecast; defaults to
 #'   `c(0.1, 0.5, 0.9)`.
-#' @param device Device requested for construction; see [tsfm_resolve_device()].
-#' @param ... Further load-affecting arguments passed to [tsfm_pretrained()].
+#' @param device Device requested for construction; see [zuk_resolve_device()].
+#' @param ... Further load-affecting arguments passed to [zuk_pretrained()].
 #'
 #' @return A `fabletools` model definition.
-#' @seealso [forecast.tsfm_model()] for the batched panel route.
+#' @seealso [forecast.zuk_model()] for the batched panel route.
 #' @export
 #' @examplesIf requireNamespace("fabletools", quietly = TRUE) && requireNamespace("tsibble", quietly = TRUE)
 #' history <- tsibble::tsibble(time = 1:12, value = cumsum(1:12), index = time)
-#' fits <- fabletools::model(history, tsfm = TSFM(value, model_id = "stub"))
+#' fits <- fabletools::model(history, zukzeit = TSFM(value, model_id = "stub"))
 #' fabletools::forecast(fits, h = 3)
-#' tsfm_unload("stub")
+#' zuk_unload("stub")
 TSFM <- function(formula, model_id, revision = NULL, quantile_levels = NULL,
                  device = NULL, ...) {
-  tsfm_require_namespace(
+  zuk_require_namespace(
     c("fabletools", "tsibble"),
     reason = "They provide the tidyverts model interface (the engine itself does not need them)."
   )
   fabletools::new_model_definition(
-    tsfm_fable_model_class(),
+    zuk_fable_model_class(),
     !!rlang::enquo(formula),
     model_id = model_id,
     revision = revision,
@@ -172,13 +172,13 @@ TSFM <- function(formula, model_id, revision = NULL, quantile_levels = NULL,
 #' @export
 #' @examplesIf requireNamespace("fabletools", quietly = TRUE) && requireNamespace("tsibble", quietly = TRUE)
 #' history <- tsibble::tsibble(time = 1:24, value = cumsum(1:24), index = time)
-#' fits <- fabletools::model(history, tsfm = TSFM(value, model_id = "stub"))
+#' fits <- fabletools::model(history, zukzeit = TSFM(value, model_id = "stub"))
 #'
 #' # fabletools calls this method one key at a time; it returns the predictive
 #' # distributions it then assembles into a fable.
 #' fabletools::forecast(fits, h = 3)
 #'
-#' tsfm_unload("stub")
+#' zuk_unload("stub")
 forecast.model_tsfm <- function(object, new_data, specials = NULL, ...) {
   h <- nrow(new_data)
   if (h == 0L) {
@@ -187,7 +187,7 @@ forecast.model_tsfm <- function(object, new_data, specials = NULL, ...) {
       object$quantile_levels
     ))
   }
-  qmat <- tsfm_run_batches(
+  qmat <- zuk_run_batches(
     object$model,
     list(object$history),
     h,
