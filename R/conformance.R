@@ -36,10 +36,29 @@ try_value <- function(fn) {
 }
 
 # A deterministic, well-behaved context: trend + seasonality + mild noise. Fixed
-# seed so failures are reproducible and diffable across runs.
+# seed so failures are reproducible and diffable across runs --- but restored on
+# exit, because this runs as a default argument of an exported function and
+# leaving `set.seed()` in place would silently reseed the caller's session.
 default_check_context <- function(n = 64L) {
-  set.seed(20260813L)
-  seq_len(n) * 0.5 + 10 * sin(seq_len(n) * 2 * pi / 12) + stats::rnorm(n, sd = 0.5) + 100
+  with_fixed_seed(20260813L, {
+    seq_len(n) * 0.5 + 10 * sin(seq_len(n) * 2 * pi / 12) +
+      stats::rnorm(n, sd = 0.5) + 100
+  })
+}
+
+with_fixed_seed <- function(seed, expr) {
+  if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+    previous <- get(".Random.seed", envir = globalenv(), inherits = FALSE)
+    on.exit(assign(".Random.seed", previous, envir = globalenv()), add = TRUE)
+  } else {
+    # No RNG state to restore: leave the session as it was found, unseeded.
+    on.exit(
+      suppressWarnings(rm(".Random.seed", envir = globalenv())),
+      add = TRUE
+    )
+  }
+  set.seed(seed)
+  expr
 }
 
 #' Verify an architecture against the tsfm contract
@@ -63,6 +82,8 @@ default_check_context <- function(n = 64L) {
 #' @param h Probe horizon.
 #' @param quantile_levels Probe quantile levels.
 #' @param tolerance Numerical tolerance for the batch-agreement check.
+#' @param crossing_tolerance How far quantiles may cross before the
+#'   monotonicity check fails. Defaults to `tolerance`.
 #' @param error If `TRUE` (the default when called non-interactively), fail on
 #'   the first violated invariant. If `FALSE`, return the full report so every
 #'   problem is visible at once.
@@ -96,6 +117,7 @@ tsfm_check_architecture <- function(constructor,
                                     h = 6L,
                                     quantile_levels = c(0.1, 0.5, 0.9),
                                     tolerance = 1e-8,
+                                    crossing_tolerance = tolerance,
                                     error = !interactive()) {
   if (!is.function(constructor)) {
     tsfm_abort_contract(
@@ -181,7 +203,9 @@ tsfm_check_architecture <- function(constructor,
       if (q < 2L) {
         return(NULL)
       }
-      crossed <- which(apply(pred, 1L, function(row) any(diff(row) < -tolerance)))
+      crossed <- which(apply(
+        pred, 1L, function(row) any(diff(row) < -crossing_tolerance)
+      ))
       if (length(crossed)) {
         sprintf(
           "Quantiles cross at horizon step(s) %s. Sort across levels before returning.",
@@ -252,15 +276,35 @@ tsfm_check_architecture <- function(constructor,
       batched <- model$predict_batch_fn(list(probe, probe), c(h, h),
                                         quantile_levels, device = device)
       if (!is.list(batched) || length(batched) != 2L) {
-        sprintf("Expected a list of 2 matrices; got %s of length %d.",
-                class(batched)[1], length(batched))
+        return(sprintf("Expected a list of 2 matrices; got %s of length %d.",
+                       class(batched)[1], length(batched)))
+      }
+      # Both entries, not just the first: a batch path that returns the right
+      # number of matrices with the wrong shapes in the tail would otherwise
+      # pass, and the whole point of the check is that the two paths are the
+      # same model.
+      shapes <- vapply(
+        batched,
+        function(m) is.matrix(m) && is.numeric(m) && identical(dim(m), c(h, q)),
+        logical(1)
+      )
+      if (!all(shapes)) {
+        return(sprintf(
+          "Batch element(s) %s are not %d x %d numeric matrices.",
+          paste(which(!shapes), collapse = ", "), h, q
+        ))
+      }
+      diffs <- vapply(
+        batched,
+        function(m) max(abs(as.numeric(m) - as.numeric(pred))),
+        numeric(1)
+      )
+      worst <- max(diffs)
+      if (!is.finite(worst) || worst > tolerance) {
+        sprintf("Batch and loop paths differ by %.3g (tolerance %.3g).",
+                worst, tolerance)
       } else {
-        diffs <- max(abs(as.numeric(batched[[1]]) - as.numeric(pred)))
-        if (!is.finite(diffs) || diffs > tolerance) {
-          sprintf("Batch and loop paths differ by %.3g (tolerance %.3g).", diffs, tolerance)
-        } else {
-          NULL
-        }
+        NULL
       }
     })
   } else {

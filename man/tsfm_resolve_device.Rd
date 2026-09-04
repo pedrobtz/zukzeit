@@ -20,3 +20,9 @@ based on what the installed torch backend reports, and warns if a requested
 accelerator is unavailable, falling back to CPU. Without torch it is always
 \code{"cpu"}, so the stub path never touches torch.
 }
+\examples{
+tsfm_resolve_device("cpu")
+
+# "auto" picks the best backend the installed torch reports.
+tsfm_resolve_device("auto")
+}

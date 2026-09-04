@@ -1,22 +1,22 @@
 Package: tsfm
-Title: Native Time-Series Foundation Models for R
+Title: Native Time-Series Foundation Models
 Version: 0.1.0
 Authors@R: c(
-    person("Pedro", "Botz", , "pedrobtz@gmail.com", role = c("aut", "cre")),
+    person("Pedro", "Botz", , "pedrobtz@gmail.com", role = c("aut", "cre", "cph")),
     person("Google", "LLC", role = c("cph", "ctb"),
            comment = "TimesFM reference implementation")
     )
-Description: Runs open time-series foundation models natively in R. It provides
-    a pretrained-checkpoint loader backed by a curated catalogue and an
+Description: Runs open time-series foundation models natively in 'R'. It
+    provides a pretrained-checkpoint loader backed by a curated catalogue and an
     architecture constructor registry, a
     versioned execution contract and conformance harness, explicit capability
     metadata, batched panel inference with device resolution, and a standard
     forecast object backed by 'distributional'. The first supported native
-    architecture is TimesFM 2.5, loaded from an immutable checkpoint and
+    architecture is 'TimesFM' 2.5, loaded from an immutable checkpoint and
     verified against pinned reference outputs; see Das et al. (2024)
     <doi:10.48550/arXiv.2310.10688>. The engine is framework-neutral, with
-    optional adapters for 'tidymodels' (via 'hardhat' and 'parsnip') and the
-    tidyverts ecosystem (via 'fabletools').
+    optional adapters for 'tidymodels' (via 'parsnip' and 'dials') and the
+    'tidyverts' ecosystem (via 'fabletools').
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

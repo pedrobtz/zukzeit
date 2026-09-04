@@ -22,3 +22,13 @@ Downloads every file in a checkpoint's static manifest through \code{hfhub} and
 returns their local paths without constructing a model. Repeated calls reuse
 the Hub cache. Disk deletion remains the responsibility of \code{hfhub}.
 }
+\examples{
+# Which checkpoints can be prefetched, and how large they are.
+tsfm_models()[, c("model_id", "size_bytes", "cached")]
+
+# Downloading the pinned TimesFM checkpoint transfers about 925 MB.
+\dontrun{
+paths <- tsfm_download("google/timesfm-2.5-200m-pytorch")
+names(paths)
+}
+}

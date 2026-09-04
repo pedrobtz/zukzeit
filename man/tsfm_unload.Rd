@@ -16,3 +16,11 @@ Invisibly, the number of resident handles removed.
 Removes matching strong references from the current R session. Downloaded
 files are not deleted.
 }
+\examples{
+model <- tsfm_pretrained("stub")
+tsfm_cache_status()$resident
+
+# Evict one checkpoint, or every resident handle with no arguments.
+tsfm_unload("stub")
+tsfm_cache_status()$resident
+}

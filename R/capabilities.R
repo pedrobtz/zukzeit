@@ -22,6 +22,18 @@
 #'
 #' @return A `tsfm_capabilities` object.
 #' @export
+#' @examples
+#' new_tsfm_capabilities("demo", max_context = 512L)
+#'
+#' # A checkpoint with fixed trained quantile levels declares them, and the
+#' # engine then refuses any other level before running the forward pass.
+#' new_tsfm_capabilities(
+#'   "demo",
+#'   max_context = 512L,
+#'   max_horizon = 64,
+#'   quantile_levels = c(0.1, 0.5, 0.9),
+#'   license = "Apache-2.0"
+#' )
 new_tsfm_capabilities <- function(architecture,
                                   max_context,
                                   max_horizon = Inf,
@@ -90,7 +102,7 @@ new_tsfm_capabilities <- function(architecture,
     )
   }
 
-  reserved <- c(
+  reserved <- list(
     multivariate = multivariate,
     samples = samples,
     past_covariates = past_covariates,
@@ -98,6 +110,26 @@ new_tsfm_capabilities <- function(architecture,
     static_covariates = static_covariates,
     fine_tunable = fine_tunable
   )
+  # Checked as a list, not a vector: c() would coerce a stray numeric to a
+  # common type, and isTRUE(1) is FALSE, so a non-logical declaration would slip
+  # through the gate below and be silently recorded as disabled.
+  malformed <- names(reserved)[!vapply(
+    reserved,
+    function(flag) is.logical(flag) && length(flag) == 1L && !is.na(flag),
+    logical(1)
+  )]
+  if (length(malformed)) {
+    tsfm_abort_contract(
+      c(
+        "Capability flags must each be one non-missing logical value.",
+        "x" = "Malformed: {.val {malformed}}."
+      ),
+      architecture = architecture,
+      contract = "capability declaration",
+      expected = "TRUE or FALSE",
+      actual = reserved[malformed]
+    )
+  }
   if (any(vapply(reserved, isTRUE, logical(1)))) {
     enabled <- names(reserved)[vapply(reserved, isTRUE, logical(1))]
     tsfm_abort_contract(
@@ -137,6 +169,12 @@ new_tsfm_capabilities <- function(architecture,
 #' @param ... Unused, for future methods.
 #' @return A [new_tsfm_capabilities()] object.
 #' @export
+#' @examples
+#' model <- tsfm_pretrained("stub")
+#' tsfm_capabilities(model)
+#'
+#' tsfm_capabilities(model)$max_context
+#' tsfm_unload("stub")
 tsfm_capabilities <- function(x, ...) {
   UseMethod("tsfm_capabilities")
 }

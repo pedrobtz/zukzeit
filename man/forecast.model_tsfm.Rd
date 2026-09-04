@@ -23,3 +23,15 @@ The \code{\link[generics:forecast]{generics::forecast()}} method for a \code{TSF
 \code{distributional} vector of predictive quantiles, one element per row of
 \code{new_data}, which is what \code{fabletools} assembles into a fable.
 }
+\examples{
+\dontshow{if (requireNamespace("fabletools", quietly = TRUE) && requireNamespace("tsibble", quietly = TRUE)) withAutoprint(\{ # examplesIf}
+history <- tsibble::tsibble(time = 1:24, value = cumsum(1:24), index = time)
+fits <- fabletools::model(history, tsfm = TSFM(value, model_id = "stub"))
+
+# fabletools calls this method one key at a time; it returns the predictive
+# distributions it then assembles into a fable.
+fabletools::forecast(fits, h = 3)
+
+tsfm_unload("stub")
+\dontshow{\}) # examplesIf}
+}

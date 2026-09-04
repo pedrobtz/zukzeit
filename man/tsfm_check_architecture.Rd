@@ -12,6 +12,7 @@ tsfm_check_architecture(
   h = 6L,
   quantile_levels = c(0.1, 0.5, 0.9),
   tolerance = 1e-08,
+  crossing_tolerance = tolerance,
   error = !interactive()
 )
 }
@@ -32,6 +33,9 @@ to a deterministic trend-plus-seasonality series of length 64.}
 \item{quantile_levels}{Probe quantile levels.}
 
 \item{tolerance}{Numerical tolerance for the batch-agreement check.}
+
+\item{crossing_tolerance}{How far quantiles may cross before the
+monotonicity check fails. Defaults to \code{tolerance}.}
 
 \item{error}{If \code{TRUE} (the default when called non-interactively), fail on
 the first violated invariant. If \code{FALSE}, return the full report so every

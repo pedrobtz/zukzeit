@@ -50,3 +50,16 @@ and cannot do. It is attached to every model returned by
 forecast call is rejected with an informative error \strong{before} any tensor
 work if the request exceeds the model's declared capabilities.
 }
+\examples{
+new_tsfm_capabilities("demo", max_context = 512L)
+
+# A checkpoint with fixed trained quantile levels declares them, and the
+# engine then refuses any other level before running the forward pass.
+new_tsfm_capabilities(
+  "demo",
+  max_context = 512L,
+  max_horizon = 64,
+  quantile_levels = c(0.1, 0.5, 0.9),
+  license = "Apache-2.0"
+)
+}

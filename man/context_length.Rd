@@ -18,3 +18,11 @@ A \code{dials} quantitative parameter.
 A \pkg{dials} parameter so \code{context_length} can be tuned with
 \code{tune::tune_grid()} over \code{rsample} resamples.
 }
+\examples{
+\dontshow{if (requireNamespace("dials", quietly = TRUE)) withAutoprint(\{ # examplesIf}
+context_length()
+
+# Narrow the search space, then draw a grid from it.
+dials::grid_regular(context_length(range = c(64L, 512L)), levels = 4)
+\dontshow{\}) # examplesIf}
+}

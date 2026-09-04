@@ -7,11 +7,16 @@
 # and forecast.tsfm_model() for plain data frames and tsibbles.
 #
 # For a zero-shot foundation model, "fitting" binds the loaded model to a panel
-# of history: it validates the request against the model's capabilities, molds
-# the outcome through hardhat (so factor handling and novel-level checks match
-# every other tidymodels engine), and stores each series' observed values.
-# `predict()` then forecasts the horizons implied by `new_data` and returns a
-# tidymodels-conformant tibble, row-aligned to `new_data`.
+# of history: it validates the request against the model's capabilities and
+# stores each series' observed values. `predict()` then forecasts the horizons
+# implied by `new_data` and returns a tidymodels-conformant data frame,
+# row-aligned to `new_data`.
+#
+# There is deliberately no hardhat mold here. A zero-shot model consumes no
+# predictors, so a blueprint would describe columns nothing reads, and forging
+# `new_data` through it would demand training predictors the caller has no
+# reason to supply at forecast time. Keeping it out means `tsfm_fit()` needs no
+# optional dependency at all.
 
 #' Fit (bind) a foundation model to training history
 #'
@@ -19,6 +24,23 @@
 #' @param ... Passed to methods.
 #' @return A `tsfm_fit` object.
 #' @export
+#' @examples
+#' model <- tsfm_pretrained("stub")
+#' train <- data.frame(
+#'   store = rep(c("a", "b"), each = 40),
+#'   day   = rep(1:40, 2),
+#'   sales = c(cumsum(rep(2, 40)) + 100, cumsum(rep(1, 40)) + 50)
+#' )
+#'
+#' # Formula interface: the left-hand side names the target series.
+#' fit <- tsfm_fit(sales ~ ., data = train, model = model,
+#'                 index = "day", id = "store")
+#' fit
+#'
+#' # Or name the columns directly.
+#' tsfm_fit(train, model = model, target = "sales", index = "day", id = "store")
+#'
+#' tsfm_unload("stub")
 tsfm_fit <- function(x, ...) {
   UseMethod("tsfm_fit")
 }
@@ -68,10 +90,6 @@ tsfm_fit.data.frame <- function(x, model, target, index, id = NULL,
 
 tsfm_fit_data_frame <- function(data, model, target, index, id,
                                 quantile_levels) {
-  tsfm_require_namespace(
-    "hardhat",
-    reason = "for the tidymodels fit interface (the engine itself does not need it)."
-  )
   if (!inherits(model, "tsfm_model")) {
     tsfm_abort_contract(
       "{.arg model} must be a {.cls tsfm_model} (see {.fn tsfm_pretrained}).",
@@ -117,15 +135,7 @@ tsfm_fit_data_frame <- function(data, model, target, index, id,
     )
   }
 
-  # hardhat XY mold: validates/standardises the target as an outcome and yields
-  # a blueprint reused by predict(). The XY interface (rather than a formula)
-  # sidesteps intercept handling, and non-target columns ride along as
-  # predictors for the covariate roles a later stage will consume.
-  molded <- hardhat::mold(
-    x = data[, setdiff(names(data), target), drop = FALSE],
-    y = data[, target, drop = FALSE]
-  )
-  y <- molded$outcomes[[1]]
+  y <- data[[target]]
   if (!is.numeric(y)) {
     tsfm_abort_capability(
       "Target {.val {target}} must be numeric; got {.cls {class(y)}}.",
@@ -142,13 +152,16 @@ tsfm_fit_data_frame <- function(data, model, target, index, id,
     id <- ".series"
     data[[id]] <- ".series"
   }
+  # Series are keyed by label, never by factor level code: predict() looks
+  # histories up by name, and a factor index into a list silently resolves by
+  # code instead. Normalising here keeps fit and predict in the same key space.
+  data[[id]] <- as.character(data[[id]])
   data <- data[order(data[[id]], data[[index]]), , drop = FALSE]
   histories <- split(as.numeric(data[[target]]), data[[id]])
 
   structure(
     list(
       model           = model,
-      blueprint       = molded$blueprint,
       target          = target,
       index           = index,
       id              = id,
@@ -168,9 +181,12 @@ print.tsfm_fit <- function(x, ...) {
 
 #' Forecast from a fitted foundation model
 #'
-#' Returns a tidymodels-conformant tibble with one row per row of `new_data`
-#' (same order): `.pred` (point), `.pred_lower`, `.pred_upper`, and one
-#' `.pred_qXX` column per fitted quantile level.
+#' Returns a tidymodels-conformant data frame with one row per row of
+#' `new_data` (same order): `.pred` (point), `.pred_lower`, `.pred_upper`, and
+#' one `.pred_qXX` column per fitted quantile level, where `XX` is the level as
+#' a percentage (`0.1` becomes `.pred_q10`). Levels finer than a whole percent
+#' carry the extra digits after an underscore (`0.025` becomes `.pred_q02_5`),
+#' so no two levels can ever map to the same column.
 #'
 #' @param object A `tsfm_fit`.
 #' @param new_data Future rows to forecast: the `index` (and `id`) columns that
@@ -178,6 +194,21 @@ print.tsfm_fit <- function(x, ...) {
 #' @param ... Unused.
 #' @return A `data.frame` of predictions row-aligned to `new_data`.
 #' @export
+#' @examples
+#' model <- tsfm_pretrained("stub")
+#' train <- data.frame(
+#'   store = rep(c("a", "b"), each = 40),
+#'   day   = rep(1:40, 2),
+#'   sales = c(cumsum(rep(2, 40)) + 100, cumsum(rep(1, 40)) + 50)
+#' )
+#' fit <- tsfm_fit(sales ~ ., data = train, model = model,
+#'                 index = "day", id = "store")
+#'
+#' # One row of predictions per row of `new_data`, in that same order.
+#' future <- data.frame(store = c("b", "a", "b"), day = c(41L, 41L, 42L))
+#' predict(fit, new_data = future)
+#'
+#' tsfm_unload("stub")
 predict.tsfm_fit <- function(object, new_data, ...) {
   index <- object$index
   id <- object$id
@@ -195,8 +226,13 @@ predict.tsfm_fit <- function(object, new_data, ...) {
   if (!id %in% names(nd)) {
     nd[[id]] <- ".series"
   }
+  # See tsfm_fit_data_frame(): keys are labels. Without this, a factor `id`
+  # column --- anything that has been through droplevels() or subset() --- makes
+  # `object$histories[ids]` select by level code, which either forecasts the
+  # wrong series or fails several frames down with an error about horizons.
+  nd[[id]] <- as.character(nd[[id]])
 
-  # Novel-level check, hardhat-style: every series in new_data must have history.
+  # Every series in new_data must have a fitted history to condition on.
   novel <- setdiff(unique(nd[[id]]), names(object$histories))
   if (length(novel)) {
     tsfm_abort_capability(c(

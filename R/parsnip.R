@@ -21,12 +21,27 @@
 #' `revision`, `index`
 #' (time column), `id` (series column), and `quantile_levels`.
 #'
-#' @examples
-#' \dontrun{
+#' # Inside a workflow
+#'
+#' `index` and `id` name columns the engine reads from the data it is handed,
+#' so both have to survive the workflow's preprocessor. `add_formula()` keeps
+#' only the terms in the formula, which silently drops the series id and makes
+#' the fit fail on a missing column. Use `add_variables()`, which passes the
+#' named columns through untouched:
+#'
+#' ```r
+#' workflow() |>
+#'   add_variables(outcomes = sales, predictors = c(month, store)) |>
+#'   add_model(spec)
+#' ```
+#'
+#' A formula listing every needed column (`sales ~ month + store`) works too.
+#'
+#' @examplesIf requireNamespace("parsnip", quietly = TRUE)
 #' spec <- tsfm_reg(context_length = 512) |>
 #'   parsnip::set_engine("tsfm", model_id = "stub",
-#'                       index = "date", id = "store")
-#' }
+#'                       index = "day", id = "store")
+#' spec
 #' @return A parsnip `model_spec`.
 #' @export
 tsfm_reg <- function(mode = "regression", engine = "tsfm",
@@ -46,6 +61,42 @@ tsfm_reg <- function(mode = "regression", engine = "tsfm",
   )
 }
 
+#' Update a tsfm model specification
+#'
+#' The [stats::update()] method every `parsnip` specification is expected to
+#' provide. `tune` reaches it through `tune::finalize_workflow()` when it
+#' substitutes a chosen `context_length` back into the spec, so without it the
+#' whole tuning path fails with `update.default()`'s "need an object with call
+#' component".
+#'
+#' @param object A [tsfm_reg()] specification.
+#' @param parameters A one-row tibble or named list of parameter values, as
+#'   supplied by `tune::finalize_workflow()`.
+#' @param context_length New context length, or `NULL` to leave it unchanged.
+#' @param fresh If `TRUE`, replace the argument set rather than modifying it.
+#' @param ... Not used.
+#' @return An updated [tsfm_reg()] specification.
+#' @export
+#' @examplesIf requireNamespace("parsnip", quietly = TRUE)
+#' spec <- tsfm_reg(context_length = 512L)
+#' update(spec, context_length = 128L)
+update.tsfm_reg <- function(object, parameters = NULL, context_length = NULL,
+                            fresh = FALSE, ...) {
+  tsfm_require_namespace(
+    "parsnip",
+    reason = "It provides the tidymodels specification interface (the engine itself does not need it)."
+  )
+  args <- list(context_length = rlang::enquo(context_length))
+  parsnip::update_spec(
+    object = object,
+    parameters = parameters,
+    args_enquo_list = args,
+    fresh = fresh,
+    cls = "tsfm_reg",
+    ...
+  )
+}
+
 #' Fit bridge used by the parsnip engine
 #'
 #' This exported bridge is an implementation detail required by parsnip's
@@ -58,10 +109,23 @@ tsfm_reg <- function(mode = "regression", engine = "tsfm",
 #' @param index,id Time-index and optional series-id columns.
 #' @param quantile_levels Quantiles retained by the fitted engine.
 #' @param context_length Optional maximum history used at inference.
-#' @param ... Reserved for future engine arguments.
+#' @param ... Load-affecting architecture options forwarded to
+#'   [tsfm_pretrained()]. They become part of the resident-cache key and are
+#'   available to the constructor as `config$load_options`.
 #' @return A `tsfm_fit` object.
 #' @keywords internal
 #' @export
+#' @examplesIf requireNamespace("parsnip", quietly = TRUE)
+#' train <- data.frame(store = "a", day = 1:40,
+#'                     sales = cumsum(rep(2, 40)) + 100)
+#'
+#' # Normally reached through tsfm_reg() and parsnip::fit(); called directly
+#' # here to show what the engine registration wires up.
+#' fit <- tsfm_parsnip_fit(sales ~ ., data = train, model_id = "stub",
+#'                         index = "day", id = "store")
+#' predict(fit, new_data = data.frame(store = "a", day = 41:43))
+#'
+#' tsfm_unload("stub")
 tsfm_parsnip_fit <- function(formula, data, model_id, revision = NULL,
                              device = NULL, reuse = TRUE,
                              index, id = NULL,
@@ -167,6 +231,11 @@ tunable_tsfm_reg <- function(x, ...) {
 #' @param trans A transformation, or `NULL`.
 #' @return A `dials` quantitative parameter.
 #' @export
+#' @examplesIf requireNamespace("dials", quietly = TRUE)
+#' context_length()
+#'
+#' # Narrow the search space, then draw a grid from it.
+#' dials::grid_regular(context_length(range = c(64L, 512L)), levels = 4)
 context_length <- function(range = c(64L, 2048L), trans = NULL) {
   tsfm_require_namespace(
     "dials",

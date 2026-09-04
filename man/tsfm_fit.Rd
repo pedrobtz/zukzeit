@@ -50,3 +50,21 @@ A \code{tsfm_fit} object.
 \description{
 Fit (bind) a foundation model to training history
 }
+\examples{
+model <- tsfm_pretrained("stub")
+train <- data.frame(
+  store = rep(c("a", "b"), each = 40),
+  day   = rep(1:40, 2),
+  sales = c(cumsum(rep(2, 40)) + 100, cumsum(rep(1, 40)) + 50)
+)
+
+# Formula interface: the left-hand side names the target series.
+fit <- tsfm_fit(sales ~ ., data = train, model = model,
+                index = "day", id = "store")
+fit
+
+# Or name the columns directly.
+tsfm_fit(train, model = model, target = "sales", index = "day", id = "store")
+
+tsfm_unload("stub")
+}

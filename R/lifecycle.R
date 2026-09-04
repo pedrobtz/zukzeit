@@ -104,6 +104,15 @@ validate_downloaded_manifest <- function(record, paths) {
 #' @param progress Logical; show expected-size and Hub download progress.
 #' @return Invisibly, a named character vector of local manifest paths.
 #' @export
+#' @examples
+#' # Which checkpoints can be prefetched, and how large they are.
+#' tsfm_models()[, c("model_id", "size_bytes", "cached")]
+#'
+#' # Downloading the pinned TimesFM checkpoint transfers about 925 MB.
+#' \dontrun{
+#' paths <- tsfm_download("google/timesfm-2.5-200m-pytorch")
+#' names(paths)
+#' }
 tsfm_download <- function(model_id, revision = NULL, progress = interactive()) {
   if (length(progress) != 1L || !is.logical(progress) || is.na(progress)) {
     tsfm_abort_capability(
@@ -377,6 +386,13 @@ tsfm_cache_status <- function() {
 #' @param model_id,revision,device Optional filters; `NULL` matches every value.
 #' @return Invisibly, the number of resident handles removed.
 #' @export
+#' @examples
+#' model <- tsfm_pretrained("stub")
+#' tsfm_cache_status()$resident
+#'
+#' # Evict one checkpoint, or every resident handle with no arguments.
+#' tsfm_unload("stub")
+#' tsfm_cache_status()$resident
 tsfm_unload <- function(model_id = NULL, revision = NULL, device = NULL) {
   if (!is.null(device)) device <- tsfm_resolve_device(device)
   entries <- tsfm_resident_entries()

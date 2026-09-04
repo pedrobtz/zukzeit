@@ -42,3 +42,23 @@ The convenience surface: hand a panel of history and a horizon, get a
 generic fabletools and modeltime dispatch on, so attaching tsfm alongside
 them never masks the verb.
 }
+\examples{
+model <- tsfm_pretrained("stub")
+
+# A plain data frame needs its index and target columns named.
+history <- data.frame(day = 1:60, sales = cumsum(rep(2, 60)) + 100)
+fc <- forecast(model, history, h = 5, index = "day", target = "sales")
+fc
+
+as.data.frame(fc)
+
+# A panel: one row per series and time step, keyed by `store`.
+panel <- data.frame(
+  store = rep(c("a", "b"), each = 60),
+  day   = rep(1:60, 2),
+  sales = c(cumsum(rep(2, 60)) + 100, cumsum(rep(1, 60)) + 50)
+)
+forecast(model, panel, h = 3, index = "day", key = "store", target = "sales")
+
+tsfm_unload("stub")
+}

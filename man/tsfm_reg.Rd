@@ -25,10 +25,26 @@ Model-specific settings are supplied through \code{set_engine("tsfm", ...)}:
 \code{revision}, \code{index}
 (time column), \code{id} (series column), and \code{quantile_levels}.
 }
+\section{Inside a workflow}{
+\code{index} and \code{id} name columns the engine reads from the data it is handed,
+so both have to survive the workflow's preprocessor. \code{add_formula()} keeps
+only the terms in the formula, which silently drops the series id and makes
+the fit fail on a missing column. Use \code{add_variables()}, which passes the
+named columns through untouched:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{workflow() |>
+  add_variables(outcomes = sales, predictors = c(month, store)) |>
+  add_model(spec)
+}\if{html}{\out{</div>}}
+
+A formula listing every needed column (\code{sales ~ month + store}) works too.
+}
+
 \examples{
-\dontrun{
+\dontshow{if (requireNamespace("parsnip", quietly = TRUE)) withAutoprint(\{ # examplesIf}
 spec <- tsfm_reg(context_length = 512) |>
   parsnip::set_engine("tsfm", model_id = "stub",
-                      index = "date", id = "store")
-}
+                      index = "day", id = "store")
+spec
+\dontshow{\}) # examplesIf}
 }

@@ -35,3 +35,18 @@ Truncates each context to the model's \code{max_context}, then evaluates the
 model. Returns a list, aligned to \code{contexts}, of \verb{h x length(quantile_levels)}
 predictive-quantile matrices.
 }
+\examples{
+model <- tsfm_pretrained("stub")
+
+# Two series of different lengths, each with its own horizon.
+quantiles <- tsfm_run_batches(
+  model,
+  contexts = list(cumsum(rep(1, 40)), cumsum(rep(2, 25))),
+  horizons = c(3L, 5L),
+  quantile_levels = c(0.1, 0.5, 0.9)
+)
+lengths(quantiles)
+quantiles[[1]]
+
+tsfm_unload("stub")
+}

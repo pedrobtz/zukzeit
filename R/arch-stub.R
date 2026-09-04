@@ -1,7 +1,7 @@
 # Stage 0 stub architecture.
 #
 # A weight-free, torch-free forecaster used to exercise the whole contract
-# (loader -> capabilities -> hardhat bridge -> batched inference -> forecast
+# (loader -> capabilities -> fit bridge -> batched inference -> forecast
 # object -> fable/yardstick adapters) before any native model exists. It is a
 # random-walk model: the point forecast is the last observed value and the
 # predictive spread grows with the square root of the horizon, scaled by the

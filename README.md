@@ -44,7 +44,8 @@ equal standing**, all in `Suggests`:
 |---------|---------|-------|
 | plain R | `forecast()` on a `data.frame`, `as.data.frame()` | — |
 | tidyverts | `fabletools::as_fable()` → `fable`; `TSFM()` inside `fabletools::model()` | `fabletools`, `tsibble` |
-| tidymodels | `tsfm_fit()` / `predict()`, `tsfm_reg()` parsnip spec | `hardhat`, `parsnip` |
+| tidymodels | `tsfm_fit()` / `predict()` | — |
+| tidymodels | `tsfm_reg()` parsnip spec, tunable `context_length` | `parsnip`, `dials` |
 
 There are two routes into the tidyverts, and they trade convenience for
 throughput. `forecast(model, panel, h) |> fabletools::as_fable()` runs **one

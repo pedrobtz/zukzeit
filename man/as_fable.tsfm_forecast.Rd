@@ -25,4 +25,20 @@ soon as fabletools is loaded, and its absence never blocks loading tsfm.
 Call it as \code{fabletools::as_fable(x)}; tsfm deliberately does not define a
 competing \code{as_fable()} generic.
 }
+\examples{
+\dontshow{if (requireNamespace("fabletools", quietly = TRUE) && requireNamespace("tsibble", quietly = TRUE)) withAutoprint(\{ # examplesIf}
+model <- tsfm_pretrained("stub")
+history <- tsibble::tsibble(
+  month = tsibble::yearmonth(seq(as.Date("2020-01-01"), by = "month",
+                                 length.out = 36)),
+  sales = as.numeric(1:36),
+  index = month
+)
+
+# Call it qualified: tsfm registers a method rather than a rival generic.
+fabletools::as_fable(forecast(model, history, h = 3))
+
+tsfm_unload("stub")
+\dontshow{\}) # examplesIf}
+}
 \keyword{internal}

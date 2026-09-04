@@ -8,7 +8,15 @@ vignette: >
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+
+has_tuning <- requireNamespace("parsnip", quietly = TRUE) &&
+  requireNamespace("workflows", quietly = TRUE) &&
+  requireNamespace("tune", quietly = TRUE) &&
+  requireNamespace("dials", quietly = TRUE) &&
+  requireNamespace("rsample", quietly = TRUE) &&
+  requireNamespace("yardstick", quietly = TRUE)
+knitr::opts_chunk$set(eval = has_tuning)
 ```
 
 How much history should a foundation model condition on? More context is not
@@ -18,16 +26,33 @@ empirically with the standard tidymodels tuning machinery over **rolling-origin*
 (time-aware) resamples, rather than random cross-validation that would leak the
 future into the past.
 
-The code below uses the executable `stub` fixture to demonstrate the mechanics.
-It is not a foundation-model benchmark; repeat the workflow with TimesFM only
-after that checkpoint passes the package's support gates.
+The code below uses the executable `stub` fixture to demonstrate the mechanics,
+and every output is produced when this vignette is built. It is not a
+foundation-model benchmark: the stub forecasts the last observed value, so its
+score cannot depend on how much history it keeps. Repeat the workflow with
+TimesFM for a result that means something.
+
+## Some history to search over
+
+```{r}
+library(tsfm)
+
+set.seed(20260904)
+months <- seq(as.Date("2015-01-01"), by = "month", length.out = 96)
+history <- data.frame(
+  store = "north",
+  month = months,
+  sales = 100 + 0.8 * seq_along(months) +
+    10 * sin(seq_along(months) * pi / 6) + rnorm(length(months), sd = 2)
+)
+head(history, 3)
+```
 
 ## The spec
 
 Mark `context_length` for tuning; everything else is fixed through the engine:
 
 ```{r}
-library(tsfm)
 library(parsnip)
 library(workflows)
 library(tune)
@@ -37,13 +62,18 @@ library(rsample)
 spec <- tsfm_reg(context_length = tune()) |>
   set_engine("tsfm",
              model_id = "stub",
-             index    = "date",
+             index    = "month",
              id       = "store")
 
 wf <- workflow() |>
-  add_formula(demand ~ date) |>
+  add_variables(outcomes = sales, predictors = c(month, store)) |>
   add_model(spec)
 ```
+
+`add_variables()` matters here. `index` and `id` name columns the engine reads
+out of the data it is handed, and `add_formula()` keeps only the terms in the
+formula — which drops `store` before the engine sees it, and the fit then fails
+on a missing column.
 
 ## Rolling-origin resamples
 
@@ -52,38 +82,44 @@ forward in time — the assessment window is strictly after its analysis window:
 
 ```{r}
 folds <- sliding_period(
-  train_df,
-  index  = date,
-  period = "month",
-  lookback   = Inf,   # expanding-origin: use all history up to each split
-  assess_stop = 1     # score one month ahead
+  history,
+  index       = month,
+  period      = "year",
+  lookback    = Inf,   # expanding origin: all history up to each split
+  assess_stop = 1      # score one year ahead
 )
+folds
 ```
 
 ## Search
 
-Give `context_length` a range and let `tune_grid()` score each candidate with a
-proper (quantile-aware) metric:
+Give `context_length` a range and let `tune_grid()` score each candidate:
 
-```{r}
-grid <- grid_regular(
-  context_length(range = c(64L, 512L)),
-  levels = 5
-)
+```{r, message = FALSE, warning = FALSE}
+grid <- grid_regular(context_length(range = c(12L, 60L)), levels = 4)
 
 res <- tune_grid(
   wf,
   resamples = folds,
   grid      = grid,
-  metrics   = metric_set(yardstick::rmse, yardstick::mae)
+  metrics   = yardstick::metric_set(yardstick::rmse, yardstick::mae)
 )
 
 show_best(res, metric = "rmse")
+```
+
+```{r}
 best <- select_best(res, metric = "rmse")
+best
 
 final_fit <- finalize_workflow(wf, best) |>
-  fit(data = train_df)
+  fit(data = history)
+final_fit
 ```
+
+`finalize_workflow()` substitutes the chosen value back into the spec through
+the specification's `update()` method, and the refit engine then keeps only that
+much history.
 
 ## Notes
 
@@ -92,3 +128,6 @@ final_fit <- finalize_workflow(wf, best) |>
 - The heavy per-candidate cost is inference, not training (these are zero-shot
   models), so keep the grid small and prefer `sliding_period()` windows that
   reflect your real forecast horizon.
+- Scores that are identical across the grid, as above, mean the model is not
+  actually using the extra history — which for the stub is the correct answer,
+  and for a real checkpoint is a finding worth investigating.

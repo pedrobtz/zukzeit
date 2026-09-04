@@ -8,12 +8,22 @@ vignette: >
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+
+has_tidyverts <- requireNamespace("tsibble", quietly = TRUE) &&
+  requireNamespace("fabletools", quietly = TRUE)
+has_tidymodels <- requireNamespace("parsnip", quietly = TRUE) &&
+  requireNamespace("workflows", quietly = TRUE)
+has_tuning <- has_tidymodels &&
+  requireNamespace("tune", quietly = TRUE) &&
+  requireNamespace("rsample", quietly = TRUE) &&
+  requireNamespace("dials", quietly = TRUE)
 ```
 
 This vignette exercises the engine and adapter surfaces with `stub`, a
 weight-free random-walk fixture. It is not a foundation model — it exists so the
-engine and its adapters can be demonstrated and tested without a download.
+engine and its adapters can be demonstrated and tested without a download. Every
+output below is produced when this vignette is built.
 
 For the same workflow driven by a real checkpoint, see
 `vignette("timesfm-zero-shot")`.
@@ -35,82 +45,169 @@ message instead of deep inside a tensor op:
 
 ```{r}
 tsfm_capabilities(model)
-#> <tsfm_capabilities>
-#>   architecture:      stub
-#>   max_context:       512         quantiles: native
-#>   multivariate:      FALSE       samples:   FALSE
-#>   past_covariates:   FALSE       future_covariates: FALSE
-#>   static_covariates: FALSE       fine_tunable: FALSE
-#>   license:           MIT
 ```
 
-## Path 1 — the `forecast()` convenience surface (tsibble)
+Requests are validated against that report at the engine boundary, not after it:
 
-Hand a panel of history and a horizon; get a forecast object back that converts
-to a `fable` for the tidyverts accuracy/reconciliation stack:
+```{r, error = TRUE}
+forecast(model, data.frame(t = 1:10, y = as.numeric(1:10)),
+         h = 5, index = "t", target = "y", quantile_levels = c(0.1, 1.5))
+```
+
+## A panel to forecast
+
+Two monthly series, split into observed history and the twelve months held back
+to score against:
 
 ```{r}
-library(tsibble)
+set.seed(1)
+months <- seq(as.Date("2015-01-01"), by = "month", length.out = 96)
+panel <- data.frame(
+  store = rep(c("north", "south"), each = length(months)),
+  month = rep(months, 2),
+  sales = c(
+    100 + 0.8 * seq_along(months) + 10 * sin(seq_along(months) * pi / 6),
+    50 + 0.3 * seq_along(months) + 4 * cos(seq_along(months) * pi / 6)
+  ) + rnorm(2 * length(months), sd = 2)
+)
 
-fc <- forecast(model, tourism_history, h = 12,
+split_at <- max(months) - 365
+history <- panel[panel$month <= split_at, ]
+actuals <- panel[panel$month > split_at, ]
+nrow(history)
+nrow(actuals)
+```
+
+## Path 1 — the `forecast()` convenience surface
+
+Hand a panel of history and a horizon; get a forecast object back. This path has
+no optional dependencies at all — a plain data frame is enough, as long as the
+index and target columns are named:
+
+```{r}
+fc <- forecast(model, history, h = 12,
+               index = "month", key = "store", target = "sales",
                quantile_levels = c(0.1, 0.5, 0.9))
 
-fc |>
-  fabletools::as_fable() |>
-  fabletools::accuracy(tourism_actuals)
+fc
 ```
+
+The forecast carries both views of the same predicted quantiles: a
+`distributional` column for the tidyverts, and the raw quantile matrix for the
+tidymodels prediction columns.
+
+```{r}
+head(as.data.frame(fc), 3)
+```
+
+Note that the future index comes back as `Date`, the type it went in as. The
+engine extends an index in its own units, so a `yearmonth` panel returns
+`yearmonth`, an hourly `POSIXct` panel returns `POSIXct`, and the result joins
+straight back onto the data it came from.
+
+## Path 2 — the tidyverts
 
 `tsfm` registers a method on `fabletools::as_fable()` rather than exporting a
 generic of its own, so the verb keeps working when fabletools and `tsfm` are
 both attached. Call it qualified, or `library(fabletools)` first.
 
-## Path 2 — a tidymodels workflow
+```{r, eval = has_tidyverts}
+# yearmonth is the natural index for monthly data: calendar months are not
+# equally spaced in days, so a Date index would put the forecasts a few days
+# off the observed month starts and nothing would join.
+as_monthly <- function(data) {
+  data$month <- tsibble::yearmonth(data$month)
+  tsibble::as_tsibble(data, index = month, key = store)
+}
+history_tsbl <- as_monthly(history)
+actuals_tsbl <- as_monthly(actuals)
+
+fabletools::as_fable(forecast(model, history_tsbl, h = 12)) |>
+  fabletools::accuracy(actuals_tsbl)
+```
+
+`TSFM()` is the other tidyverts route: it composes inside `fabletools::model()`
+next to any other model definition, one key at a time.
+
+```{r, eval = has_tidyverts}
+fits <- fabletools::model(history_tsbl, tsfm = TSFM(sales, model_id = "stub"))
+fits
+
+fabletools::forecast(fits, h = 3)
+```
+
+## Path 3 — a tidymodels workflow
 
 The tidymodels surface is a `parsnip` spec inside a `workflow()`. The model is
 chosen by the engine's `model_id`; **everything else stays the same.**
 
-```{r}
+```{r, eval = has_tidymodels}
 library(parsnip)
 library(workflows)
 
 spec <- tsfm_reg(context_length = 512L) |>
   set_engine("tsfm",
              model_id = "stub",
-             index    = "date",
+             index    = "month",
              id       = "store")
 
 wf <- workflow() |>
-  add_formula(demand ~ date) |>
+  add_variables(outcomes = sales, predictors = c(month, store)) |>
   add_model(spec)
 
-fit <- fit(wf, data = train_df)
-predict(fit, new_data = future_df)   # tibble: .pred
+fitted <- fit(wf, data = history)
+head(predict(fitted, new_data = actuals[, c("store", "month")]), 3)
 ```
+
+`add_variables()` rather than `add_formula()` is deliberate. `index` and `id`
+name columns the engine reads out of the data it is handed, and a formula
+preprocessor keeps only the terms in the formula — which would drop `store`
+before the engine ever sees it.
 
 ## Tuning the context length
 
 `context_length` is a tunable `dials` parameter, so a rolling-origin search over
 `rsample` resamples works out of the box:
 
-```{r}
+```{r, eval = has_tuning, message = FALSE, warning = FALSE}
 library(tune)
 library(rsample)
 
-spec <- tsfm_reg(context_length = tune()) |>
-  set_engine("tsfm", model_id = "stub", index = "date", id = "store")
-
-tune_grid(
-  workflow() |> add_formula(demand ~ date) |> add_model(spec),
-  resamples = sliding_period(train_df, date, "month"),
-  grid      = 5
+tuned <- tune_grid(
+  workflow() |>
+    add_variables(outcomes = sales, predictors = c(month, store)) |>
+    add_model(tsfm_reg(context_length = tune()) |>
+                set_engine("tsfm", model_id = "stub",
+                           index = "month", id = "store")),
+  resamples = sliding_period(history[history$store == "north", ],
+                             index = month, period = "year",
+                             lookback = Inf, assess_stop = 1),
+  grid = dials::grid_regular(context_length(range = c(12L, 48L)), levels = 3)
 )
+
+show_best(tuned, metric = "rmse")
+```
+
+Every candidate scores the same here, and that is the expected answer: the stub
+forecasts the last observed value, so how much history it keeps cannot change
+its point forecast. Run the same search against TimesFM for a result that means
+something — `vignette("rolling-origin-tuning")` walks it in more detail.
+
+## Clean up
+
+The constructed handle is held in a bounded in-session cache. Evicting it does
+not touch anything on disk:
+
+```{r}
+tsfm_cache_status()
+
+tsfm_unload("stub")
 ```
 
 ## Status
 
 The public workflow above is real, but its model is deliberately only a test
-fixture. TimesFM 2.5 is the first implemented release model. Toto 2.0 4M and a
-new native Chronos-2 port are required before `0.1.0`; the old Chronos-2 Brulee
-bridge remains unregistered reference work only. TTM is not a current target
-because the selected small-model slot is probabilistic Toto rather than a
-point-only checkpoint.
+fixture. TimesFM 2.5 is the first implemented release model; see
+`vignette("timesfm-zero-shot")` for the same surfaces driven by real weights.
+TTM remains a registered scaffold, and Chronos-2 is rejected before any network
+or tensor work until its native port lands.

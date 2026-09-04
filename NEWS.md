@@ -4,6 +4,65 @@ Development release. The native TimesFM inference baseline and surrounding
 model-loading and forecasting shell are implemented. Toto 2.0 4M and a native
 Chronos-2 port remain required before `0.1.0` is released.
 
+## Fixes
+
+* The future index now comes back in the observed index's own type. Extending an
+  index in numeric space returned bare numbers for every `tsibble` calendar
+  type, so a `yearmonth` panel was forecast at `636, 637, 638` instead of
+  `2023 Jan` onwards, and `POSIXct` came back as seconds. That silently broke
+  the join back to the caller's data, the interval a `tsibble` reports, and any
+  `fabletools::accuracy()` call against held-out actuals. Extension is delegated
+  to `seq()`, which walks each index type in its own units; an index type that
+  cannot be extended is refused rather than downgraded.
+* Every requested quantile level now gets its own prediction column. Column
+  names rounded the level to a whole percent, so `0.02` and `0.025` both became
+  `.pred_q02` and one silently overwrote the other. Whole-percent levels keep
+  the familiar `.pred_q10` form; finer levels carry the digits they need
+  (`.pred_q02_5`).
+* `tsfm_reg()` specifications gained the `update()` method every `parsnip`
+  specification is expected to provide. Without it `tune::finalize_workflow()`
+  fell through to `update.default()` and failed with "need an object with call
+  component", so a tuned `context_length` could never be refit --- the whole
+  `dials`/`tune` integration was unreachable.
+* `predict()` on a fitted model now keys series by label rather than by factor
+  level code. A factor `id` column --- anything that has been through
+  `droplevels()` or `subset()` --- indexed the stored histories by code, which
+  forecast the wrong series or failed several frames down with an error about
+  horizons.
+* `tsfm_check_architecture()` no longer reseeds the caller's session. Its
+  default probe context is still deterministic, but the previous RNG state is
+  restored on exit.
+* The point forecast's quantile level is resolved against the checkpoint's own
+  trained levels instead of appending a literal `0.5` to levels the engine had
+  already reconciled, which risked carrying two spellings of one trained level
+  into the batch boundary. A checkpoint with no trained median now forecasts
+  using the requested level nearest it rather than refusing the request.
+* `tsfm_fit()` no longer molds through `hardhat`. The blueprint it built was
+  never forged in `predict()`, so the dependency bought nothing; the fit
+  interface now works with no optional packages installed at all.
+* Capability flags are validated as logicals. `multivariate = 1` passed the
+  reserved-field gate --- `isTRUE(1)` is `FALSE` --- and was silently recorded
+  as disabled.
+* Panel keys with unused factor levels no longer produce empty series that the
+  horizon check then rejects.
+
+## Documentation
+
+* Every exported function now has a runnable example. The `stub` fixture needs
+  no network, no checkpoint, and no `torch`, so the engine, forecast, fit,
+  device, lifecycle, and tuning surfaces are all demonstrated executably;
+  `tsfm_download()` is the sole `\dontrun{}`.
+* `vignette("zero-shot-workflow")` and `vignette("rolling-origin-tuning")` now
+  evaluate their code. They previously showed chunks that referenced objects
+  never defined in the vignette, so nothing could have run as written --- which
+  is how the missing `update()` method and the `add_formula()` trap below went
+  unnoticed.
+* `?tsfm_reg` documents that a workflow must pass the `index` and `id` columns
+  through to the engine. `add_formula()` keeps only the formula's terms and
+  drops the series id; `add_variables()` is the right preprocessor.
+
+## Engine and models
+
 * Recorded the Apache-2.0 provenance of the native TimesFM derivative files,
   preserved Google LLC's copyright notice, credited the upstream project, and
   included the complete upstream licence in the installed package.

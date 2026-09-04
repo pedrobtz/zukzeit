@@ -17,3 +17,10 @@ A \code{\link[=new_tsfm_capabilities]{new_tsfm_capabilities()}} object.
 \description{
 Report the capabilities of a model
 }
+\examples{
+model <- tsfm_pretrained("stub")
+tsfm_capabilities(model)
+
+tsfm_capabilities(model)$max_context
+tsfm_unload("stub")
+}

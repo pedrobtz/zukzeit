@@ -26,11 +26,27 @@ tsfm_infer <- function(model, histories, future_index, quantile_levels,
     model$model_id,
     model$revision
   )
-  # Always evaluate the median so the point forecast is exact.
-  levels <- sort(unique(c(quantile_levels, 0.5)))
-  median_col <- match(0.5, levels)
+  # Always evaluate the median so the point forecast is exact. Resolve it
+  # against the checkpoint's own trained levels: check_quantile_levels() has
+  # already rewritten `quantile_levels` into the checkpoint's spelling, so
+  # appending a literal 0.5 can add a second spelling of a level already
+  # requested --- which tsfm_run_batches() then rejects as a duplicate.
+  median_level <- resolve_median_level(model$capabilities, quantile_levels)
+  levels <- sort(unique(c(quantile_levels, median_level)))
+  median_col <- match(median_level, levels)
 
   keys <- names(histories)
+  unmatched <- setdiff(keys, names(future_index))
+  if (length(unmatched)) {
+    tsfm_abort_contract(
+      "Every history must have a future index under the same key.",
+      architecture = model$architecture,
+      model_id = model$model_id,
+      contract = "engine input alignment",
+      expected = names(future_index),
+      actual = keys
+    )
+  }
   horizons <- vapply(keys, function(k) length(future_index[[k]]), integer(1))
 
   qmats <- tsfm_run_batches(model, histories[keys], horizons, levels,
@@ -43,7 +59,6 @@ tsfm_infer <- function(model, histories, future_index, quantile_levels,
 
   for (i in seq_along(keys)) {
     h <- horizons[[i]]
-    if (h == 0L) next
     qmat <- matrix(as.numeric(qmats[[i]]), nrow = h, ncol = length(levels))
     key_out[[i]] <- rep(keys[[i]], h)
     idx_out[[i]] <- future_index[[keys[[i]]]]
@@ -51,11 +66,10 @@ tsfm_infer <- function(model, histories, future_index, quantile_levels,
     mean_out[[i]] <- qmat[, median_col]
   }
 
-  keep <- !vapply(idx_out, is.null, logical(1))
-  key_vec <- unlist(key_out[keep], use.names = FALSE)
-  idx_vec <- do.call(c, idx_out[keep])
-  mean_vec <- unlist(mean_out[keep], use.names = FALSE)
-  qmatrix <- do.call(rbind, qmat_out[keep])
+  key_vec <- unlist(key_out, use.names = FALSE)
+  idx_vec <- do.call(c, idx_out)
+  mean_vec <- unlist(mean_out, use.names = FALSE)
+  qmatrix <- do.call(rbind, qmat_out)
   if (is.null(qmatrix)) qmatrix <- matrix(numeric(0), ncol = length(levels))
 
   # distributional column (only the user-requested levels).
@@ -79,6 +93,23 @@ tsfm_infer <- function(model, histories, future_index, quantile_levels,
     quantiles = qmatrix[, req_cols, drop = FALSE],
     levels = quantile_levels
   )
+}
+
+# The level whose forecast becomes the point forecast. A checkpoint that
+# declares its trained levels supplies the value in its own spelling; one that
+# accepts arbitrary levels takes the exact median. A checkpoint trained only on
+# tail quantiles has no median to evaluate, so the requested level nearest 0.5
+# stands in rather than failing a request that is otherwise fully supported.
+resolve_median_level <- function(caps, levels) {
+  supported <- caps$quantile_levels
+  if (is.null(supported)) {
+    return(0.5)
+  }
+  matched <- tsfm_match_quantile_levels(0.5, supported)
+  if (!is.na(matched)) {
+    return(supported[[matched]])
+  }
+  levels[[which.min(abs(levels - 0.5))]]
 }
 
 # Build a distributional vector of predictive distributions from a quantile
@@ -143,12 +174,43 @@ tsfm_quantile_columns <- function(fc) {
   if (length(levels)) {
     out[[".pred_lower"]] <- qmatrix[, which.min(levels)]
     out[[".pred_upper"]] <- qmatrix[, which.max(levels)]
+    names <- quantile_column_names(levels)
     for (j in seq_along(levels)) {
-      nm <- sprintf(".pred_q%02d", round(levels[j] * 100))
-      out[[nm]] <- qmatrix[, j]
+      out[[names[[j]]]] <- qmatrix[, j]
     }
   }
   out
+}
+
+# Column names for the per-quantile prediction columns.
+#
+# Whole-percent levels keep the familiar two-digit form (0.1 -> `.pred_q10`).
+# Finer levels do not: rounding 0.025 and 0.02 both to `.pred_q02` would make
+# one column silently overwrite the other, dropping a requested quantile from
+# the prediction frame without an error. So the label carries exactly as many
+# decimals as the level set needs to be represented without loss, with `.`
+# written as `_` to keep the name syntactic (0.025 -> `.pred_q02_5`).
+quantile_column_names <- function(levels) {
+  percent <- as.numeric(levels) * 100
+  digits <- 0L
+  while (digits < 6L && any(abs(round(percent, digits) - percent) > 1e-9)) {
+    digits <- digits + 1L
+  }
+  labels <- formatC(
+    percent,
+    format = "f", digits = digits,
+    width = 2L + (digits > 0L) + digits, flag = "0"
+  )
+  labels <- paste0(".pred_q", gsub(".", "_", labels, fixed = TRUE))
+  if (anyDuplicated(labels)) {
+    tsfm_abort_contract(
+      "Quantile levels do not map to distinct prediction columns.",
+      contract = "prediction column names",
+      expected = "one column per requested level",
+      actual = labels
+    )
+  }
+  labels
 }
 
 # ---- fable adapter ----------------------------------------------------------
@@ -169,6 +231,19 @@ tsfm_quantile_columns <- function(fc) {
 #' @return A `fable` object.
 #' @name as_fable.tsfm_forecast
 #' @keywords internal
+#' @examplesIf requireNamespace("fabletools", quietly = TRUE) && requireNamespace("tsibble", quietly = TRUE)
+#' model <- tsfm_pretrained("stub")
+#' history <- tsibble::tsibble(
+#'   month = tsibble::yearmonth(seq(as.Date("2020-01-01"), by = "month",
+#'                                  length.out = 36)),
+#'   sales = as.numeric(1:36),
+#'   index = month
+#' )
+#'
+#' # Call it qualified: tsfm registers a method rather than a rival generic.
+#' fabletools::as_fable(forecast(model, history, h = 3))
+#'
+#' tsfm_unload("stub")
 as_fable.tsfm_forecast <- function(x, ...) {
   tsfm_require_namespace(
     c("tsibble", "fabletools"),
@@ -235,6 +310,25 @@ generics::forecast
 #' @param ... Unused.
 #' @return A `tsfm_forecast`.
 #' @export
+#' @examples
+#' model <- tsfm_pretrained("stub")
+#'
+#' # A plain data frame needs its index and target columns named.
+#' history <- data.frame(day = 1:60, sales = cumsum(rep(2, 60)) + 100)
+#' fc <- forecast(model, history, h = 5, index = "day", target = "sales")
+#' fc
+#'
+#' as.data.frame(fc)
+#'
+#' # A panel: one row per series and time step, keyed by `store`.
+#' panel <- data.frame(
+#'   store = rep(c("a", "b"), each = 60),
+#'   day   = rep(1:60, 2),
+#'   sales = c(cumsum(rep(2, 60)) + 100, cumsum(rep(1, 60)) + 50)
+#' )
+#' forecast(model, panel, h = 3, index = "day", key = "store", target = "sales")
+#'
+#' tsfm_unload("stub")
 forecast.tsfm_model <- function(object, new_data, h = 1L,
                                 quantile_levels = c(0.1, 0.5, 0.9),
                                 index = NULL, key = NULL, target = NULL,
@@ -248,7 +342,7 @@ forecast.tsfm_model <- function(object, new_data, h = 1L,
   h <- as.integer(h)
   spec <- panel_spec(new_data, index = index, key = key, target = target)
 
-  histories <- split(spec$data[[spec$target]], spec$data[[spec$key]])
+  histories <- split(spec$data[[spec$target]], spec$data[[spec$key]], drop = TRUE)
   future_index <- future_index_for(spec, h)
 
   tsfm_infer(
@@ -331,21 +425,54 @@ panel_spec <- function(new_data, index = NULL, key = NULL, target = NULL) {
 # Generate `h` future index values per key by extending the observed index by
 # its typical step (works for numeric, integer, and Date indices).
 future_index_for <- function(spec, h) {
-  by_key <- split(spec$data[[spec$index]], spec$data[[spec$key]])
+  by_key <- split(spec$data[[spec$index]], spec$data[[spec$key]], drop = TRUE)
   lapply(by_key, function(idx) extend_index(idx, h))
 }
 
-extend_index <- function(idx, h) {
+# Extend an observed index by `h` further steps of its own typical spacing.
+#
+# The step has to be measured numerically, but the extension must not be: a
+# `yearmonth` panel extended in numeric space came back indexed `636, 637, 638`
+# instead of `2023 Jan`, because tsibble's calendar types count periods under
+# `as.numeric()` while storing days. A bare numeric index silently breaks the
+# join back to the caller's data, the interval a tsibble reports, and any
+# accuracy() call against held-out actuals. `seq()` already knows how to walk
+# each index type in its own units, so the extension is delegated to it.
+extend_index <- function(idx, h, call = rlang::caller_env()) {
   n <- length(idx)
   if (n == 0L) return(idx[0])
-  last <- idx[n]
-  step <- if (n >= 2L) stats::median(diff(as.numeric(idx))) else 1
-  future_num <- as.numeric(last) + step * seq_len(h)
-  if (inherits(idx, "Date")) {
-    as.Date(future_num, origin = "1970-01-01")
-  } else if (is.integer(idx)) {
-    as.integer(round(future_num))
-  } else {
-    future_num
+  if (!is.numeric(idx) &&
+      !inherits(idx, c("Date", "POSIXct", "vctrs_vctr"))) {
+    tsfm_abort_capability(
+      c(
+        "Cannot extend an index of class {.cls {class(idx)}}.",
+        "i" = "Supported index types are numeric, integer, {.cls Date}, {.cls POSIXct}, and tsibble's calendar types."
+      ),
+      capability = "index_type",
+      requested = class(idx),
+      supported = c("numeric", "integer", "Date", "POSIXct", "vctrs_vctr"),
+      call = call
+    )
   }
+  step <- if (n >= 2L) stats::median(diff(as.numeric(idx))) else 1
+  if (!is.finite(step) || step == 0) step <- 1
+  extended <- tryCatch(
+    seq(idx[n], by = step, length.out = h + 1L)[-1L],
+    error = function(e) NULL
+  )
+  if (is.null(extended) || length(extended) != h) {
+    tsfm_abort_capability(
+      c(
+        "Could not extend a {.cls {class(idx)}} index by {h} step{?s} of {.val {step}}.",
+        "i" = "Supply a regularly spaced index, or forecast from a plain data frame with a numeric index."
+      ),
+      capability = "index_type",
+      requested = class(idx),
+      supported = "a regularly spaced index seq() can extend",
+      call = call
+    )
+  }
+  # `is.object()` guard: seq.Date() and friends hand back classed vectors with
+  # integer storage, and as.integer() would strip the class straight back off.
+  if (is.integer(idx) && !is.object(idx)) as.integer(round(extended)) else extended
 }

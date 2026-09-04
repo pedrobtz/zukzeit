@@ -30,6 +30,11 @@ is_valid_device <- function(device) {
 #'   `NULL` to read the `tsfm.device` option.
 #' @return A concrete device string (never `"auto"`).
 #' @export
+#' @examples
+#' tsfm_resolve_device("cpu")
+#'
+#' # "auto" picks the best backend the installed torch reports.
+#' tsfm_resolve_device("auto")
 tsfm_resolve_device <- function(device = NULL) {
   device <- device %||% getOption("tsfm.device", "auto")
   if (!is_valid_device(device)) {
@@ -84,6 +89,12 @@ validate_available_device <- function(device) {
 #' @param device A device string, or `NULL` to only read the current setting.
 #' @return Invisibly, the previous option value.
 #' @export
+#' @examples
+#' previous <- tsfm_set_device("cpu")
+#' tsfm_resolve_device()
+#'
+#' # Restore whatever was configured before.
+#' tsfm_set_device(previous)
 tsfm_set_device <- function(device) {
   if (!is_valid_device(device)) {
     tsfm_abort_device(
@@ -236,6 +247,20 @@ validate_quantile_matrix <- function(x, h, quantile_levels, model,
 #' @param device Device string; resolved via [tsfm_resolve_device()].
 #' @return A list of quantile matrices.
 #' @export
+#' @examples
+#' model <- tsfm_pretrained("stub")
+#'
+#' # Two series of different lengths, each with its own horizon.
+#' quantiles <- tsfm_run_batches(
+#'   model,
+#'   contexts = list(cumsum(rep(1, 40)), cumsum(rep(2, 25))),
+#'   horizons = c(3L, 5L),
+#'   quantile_levels = c(0.1, 0.5, 0.9)
+#' )
+#' lengths(quantiles)
+#' quantiles[[1]]
+#'
+#' tsfm_unload("stub")
 tsfm_run_batches <- function(model, contexts, horizons, quantile_levels,
                              batch_size = NULL, device = NULL) {
   if (!inherits(model, "tsfm_model")) {

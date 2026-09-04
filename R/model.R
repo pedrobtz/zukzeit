@@ -31,6 +31,21 @@
 #' @seealso `?`[tsfm-architecture-contract] for the full specification, and
 #'   [tsfm_check_architecture()] to verify an implementation against it.
 #' @export
+#' @examples
+#' # The smallest conforming architecture: forecast the last observed value,
+#' # with a Gaussian spread across the requested quantile levels.
+#' model <- new_tsfm_model(
+#'   architecture = "demo",
+#'   config = list(),
+#'   capabilities = new_tsfm_capabilities("demo", max_context = 128L),
+#'   predict_fn = function(context, h, quantile_levels) {
+#'     if (length(context) == 0L) stop("empty context")
+#'     last <- context[length(context)]
+#'     outer(rep(last, h), stats::qnorm(quantile_levels), `+`)
+#'   }
+#' )
+#' model
+#' model$predict_fn(c(1, 2, 3), h = 2L, quantile_levels = c(0.1, 0.5, 0.9))
 new_tsfm_model <- function(architecture,
                            config,
                            capabilities,

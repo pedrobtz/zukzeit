@@ -18,7 +18,26 @@ were used at fit time, one row per horizon to predict.}
 A \code{data.frame} of predictions row-aligned to \code{new_data}.
 }
 \description{
-Returns a tidymodels-conformant tibble with one row per row of \code{new_data}
-(same order): \code{.pred} (point), \code{.pred_lower}, \code{.pred_upper}, and one
-\code{.pred_qXX} column per fitted quantile level.
+Returns a tidymodels-conformant data frame with one row per row of
+\code{new_data} (same order): \code{.pred} (point), \code{.pred_lower}, \code{.pred_upper}, and
+one \code{.pred_qXX} column per fitted quantile level, where \code{XX} is the level as
+a percentage (\code{0.1} becomes \code{.pred_q10}). Levels finer than a whole percent
+carry the extra digits after an underscore (\code{0.025} becomes \code{.pred_q02_5}),
+so no two levels can ever map to the same column.
+}
+\examples{
+model <- tsfm_pretrained("stub")
+train <- data.frame(
+  store = rep(c("a", "b"), each = 40),
+  day   = rep(1:40, 2),
+  sales = c(cumsum(rep(2, 40)) + 100, cumsum(rep(1, 40)) + 50)
+)
+fit <- tsfm_fit(sales ~ ., data = train, model = model,
+                index = "day", id = "store")
+
+# One row of predictions per row of `new_data`, in that same order.
+future <- data.frame(store = c("b", "a", "b"), day = c(41L, 41L, 42L))
+predict(fit, new_data = future)
+
+tsfm_unload("stub")
 }

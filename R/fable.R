@@ -170,6 +170,15 @@ TSFM <- function(formula, model_id, revision = NULL, quantile_levels = NULL,
 #' @param ... Unused.
 #' @return A `distributional` vector.
 #' @export
+#' @examplesIf requireNamespace("fabletools", quietly = TRUE) && requireNamespace("tsibble", quietly = TRUE)
+#' history <- tsibble::tsibble(time = 1:24, value = cumsum(1:24), index = time)
+#' fits <- fabletools::model(history, tsfm = TSFM(value, model_id = "stub"))
+#'
+#' # fabletools calls this method one key at a time; it returns the predictive
+#' # distributions it then assembles into a fable.
+#' fabletools::forecast(fits, h = 3)
+#'
+#' tsfm_unload("stub")
 forecast.model_tsfm <- function(object, new_data, specials = NULL, ...) {
   h <- nrow(new_data)
   if (h == 0L) {

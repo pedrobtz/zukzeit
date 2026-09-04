@@ -181,3 +181,53 @@ test_that("new_tsfm_model stamps the current contract version", {
   expect_identical(model$contract_version, tsfm_contract_version())
   expect_identical(tsfm_contract_version()$major, 1L)
 })
+
+test_that("the conformance harness leaves the caller's RNG state alone", {
+  # The default probe context is seeded for reproducibility, but it runs as a
+  # default argument of an exported function: leaving set.seed() in place
+  # silently reseeded whatever session called the gate.
+  arch <- function(config, weights) {
+    new_tsfm_model(
+      architecture = "seedless",
+      config = config,
+      capabilities = new_tsfm_capabilities("seedless", max_context = 128L),
+      predict_fn = function(context, h, quantile_levels) {
+        if (length(context) == 0L) stop("empty context")
+        outer(rep(context[length(context)], h), stats::qnorm(quantile_levels), `+`)
+      }
+    )
+  }
+
+  set.seed(42)
+  expected <- runif(3)
+
+  set.seed(42)
+  before <- get(".Random.seed", envir = globalenv())
+  suppressMessages(tsfm_check_architecture(arch, error = FALSE))
+
+  expect_identical(get(".Random.seed", envir = globalenv()), before)
+  expect_equal(runif(3), expected)
+})
+
+test_that("an unseeded session is left unseeded", {
+  arch <- function(config, weights) {
+    new_tsfm_model(
+      architecture = "seedless",
+      config = config,
+      capabilities = new_tsfm_capabilities("seedless", max_context = 128L),
+      predict_fn = function(context, h, quantile_levels) {
+        if (length(context) == 0L) stop("empty context")
+        outer(rep(context[length(context)], h), stats::qnorm(quantile_levels), `+`)
+      }
+    )
+  }
+
+  if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+    previous <- get(".Random.seed", envir = globalenv())
+    on.exit(assign(".Random.seed", previous, envir = globalenv()), add = TRUE)
+    rm(".Random.seed", envir = globalenv())
+  }
+
+  suppressMessages(tsfm_check_architecture(arch, error = FALSE))
+  expect_false(exists(".Random.seed", envir = globalenv(), inherits = FALSE))
+})

@@ -30,7 +30,9 @@ arguments passed to \code{\link[=tsfm_pretrained]{tsfm_pretrained()}}.}
 
 \item{context_length}{Optional maximum history used at inference.}
 
-\item{...}{Reserved for future engine arguments.}
+\item{...}{Load-affecting architecture options forwarded to
+\code{\link[=tsfm_pretrained]{tsfm_pretrained()}}. They become part of the resident-cache key and are
+available to the constructor as \code{config$load_options}.}
 }
 \value{
 A \code{tsfm_fit} object.
@@ -39,5 +41,19 @@ A \code{tsfm_fit} object.
 This exported bridge is an implementation detail required by parsnip's
 package-qualified engine registration. Users normally call \code{\link[=tsfm_reg]{tsfm_reg()}} and
 \code{parsnip::fit()} rather than invoking it directly.
+}
+\examples{
+\dontshow{if (requireNamespace("parsnip", quietly = TRUE)) withAutoprint(\{ # examplesIf}
+train <- data.frame(store = "a", day = 1:40,
+                    sales = cumsum(rep(2, 40)) + 100)
+
+# Normally reached through tsfm_reg() and parsnip::fit(); called directly
+# here to show what the engine registration wires up.
+fit <- tsfm_parsnip_fit(sales ~ ., data = train, model_id = "stub",
+                        index = "day", id = "store")
+predict(fit, new_data = data.frame(store = "a", day = 41:43))
+
+tsfm_unload("stub")
+\dontshow{\}) # examplesIf}
 }
 \keyword{internal}

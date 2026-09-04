@@ -16,3 +16,10 @@ Invisibly, the previous option value.
 Thin wrapper over the \code{tsfm.device} option consulted by
 \code{\link[=tsfm_resolve_device]{tsfm_resolve_device()}}.
 }
+\examples{
+previous <- tsfm_set_device("cpu")
+tsfm_resolve_device()
+
+# Restore whatever was configured before.
+tsfm_set_device(previous)
+}
