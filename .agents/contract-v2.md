@@ -117,20 +117,73 @@ the future window is shared; disagreement is a `zuk_error_capability`.
 
 ## The user-facing surface
 
-The engine contract above is settled by Chronos-2. The *caller* surface is a
-separate decision, and deliberately not frozen here.
+The engine contract above is settled by Chronos-2. The *caller* surface should
+not be invented, because R has already settled most of it. What follows is a
+survey of how established packages answer the same three questions.
 
-R users do not think in rows and group ids; they think in a panel with a key
-column, an index, a target, and further columns that are covariates. The
-translation from that shape into grouped rows belongs in `forecast()` and the
-adapters, and is the part the roadmap flags as possibly unable to preserve
-batching. It is specified once the engine contract is shipped and exercised.
+| Package | Declares a covariate | Future values arrive as | Multivariate | Series key |
+|---|---|---|---|---|
+| `fable` / `fabletools` | formula RHS, `xreg` special | `forecast(new_data = )` | `vars()` on the LHS | tsibble `key`, evaluated one at a time |
+| `recipes` / tidymodels | `update_role(col, new_role = )`, arbitrary strings | `new_data` forged through the blueprint | multiple outcomes | a role, conventionally `"ID"` |
+| `modeltime` | recipe roles | `modeltime_forecast(new_data = )` | via the recipe | via the recipe |
+| `nixtlar` (TimeGPT client) | any extra column of the long panel; `hist_exog_list` names the past-only ones | `X_df`, a separate future frame | --- | `id_col` |
+| `prophet` | `add_regressor(m, name)` before fitting | the future frame | --- | --- |
+
+Verified locally for `fable` (`ARIMA(y ~ x)` with `forecast(new_data = )`
+round-trips) and `recipes` (`update_role()` accepts arbitrary role strings,
+selected with `has_role()`); read from source for the rest.
+
+Three things are consistent across all five:
+
+1. **Future values always arrive as a separate future frame.** `new_data`,
+   `X_df`, the prophet future frame --- the same idea every time.
+2. **A column's role is declared once, by name, at definition time**, not
+   restructured into rows by the caller.
+3. **Nobody exposes a rows-plus-group-ids API.** That representation is
+   internal everywhere it exists, which is where it belongs here too: the
+   `groups` record above is what the engine hands an architecture, never what a
+   user builds.
+
+`nixtlar` is the most instructive, being the only one of the five wrapping a
+foundation model that supports both covariate kinds --- the same position
+`zukzeit` is in. Its answer is the minimal one: extra panel columns are
+covariates, `hist_exog_list` names those without a future, and everything else
+is expected in `X_df`. `fable` and `prophet` do not make the distinction at all
+because their models only accept future-known regressors.
+
+### What this implies
+
+Adopt each ecosystem's own idiom rather than a single new vocabulary:
+
+- **plain R `forecast()`** --- extra columns are covariates, a future frame
+  carries their future values, and one argument names the past-only ones. This
+  is `nixtlar`'s shape, and it is the route that keeps batching.
+- **`TSFM()`** --- `TSFM(y ~ xreg(promo))` with `forecast(fits, new_data = )`,
+  fable's own convention, plus a special for past-only covariates.
+- **tidymodels** --- recipe roles, which already express exactly this
+  distinction with no new machinery.
+
+### The gap: cross-learning across keys
+
+`fabletools::model()` evaluates one key at a time, and no tidyverts model
+shares information between keys, so the tidyverts has no convention for it.
+`nixtlar` sidesteps the question: the whole long panel is sent, and
+cross-learning is implicit in what the caller chose to include.
+
+Cross-series learning is one of Chronos-2's headline capabilities, so it can
+only be expressed through the batched `forecast(model, panel, h)` route. The
+smallest convention that works is `nixtlar`'s --- the panel *is* the task ---
+with an optional column naming finer groups when one call should carry several
+independent tasks. This is the one place a convention has to be chosen rather
+than adopted.
 
 ## Open decisions
 
 1. Whether `groups` is a plain list or a constructed `zuk_groups()` object with
    validation attached. A constructor is more defensible at the boundary; a
-   plain list is lighter for architecture authors to build in tests.
+   plain list is lighter for architecture authors to build in tests. Note the
+   survey above: this record is engine-internal either way, so the cost falls
+   on architecture authors rather than users.
 2. Whether the return should carry the target rows' `id` values as names, so a
    caller can map results back without re-deriving the mapping.
 3. Whether contract v1 handles should report `contract_version` 1.0.0 forever
