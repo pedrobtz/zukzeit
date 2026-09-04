@@ -95,6 +95,42 @@ time encoding is `arange(-context_length, 0) / time_encoding_scale`, so absolute
 position is a feature here, not only a rotation. Patch validity follows the same
 rule as Toto: a patch attends if it holds at least one observation.
 
+## Operator spike
+
+A full `Chronos2EncoderBlock` --- T5 layer norm, RoPE, time attention, group
+attention, and the feed-forward --- was implemented in R `torch` and compared
+against the pinned reference on five series arranged as two groups of two plus
+a singleton, with one series carrying unobserved leading patches:
+
+```
+Chronos-2 encoder block   max|diff| = 4.768e-07   rel = 2.193e-07
+```
+
+It matched on the first attempt, which is itself informative: **there is no
+unit-scaling layer.** Plain `nnf_linear` reproduces the reference exactly, so
+the sixth open question below is resolved, and the largest single risk carried
+over from the Toto port does not apply here.
+
+Four details carry parity risk and none are visible from the state dict:
+
+- **Attention is unscaled.** `scaled_dot_product_attention(..., scale=1.0)`,
+  the T5 convention where scaling is folded into initialization. The
+  conventional `1/sqrt(d_kv)` would be wrong by a factor of 8 at `d_kv = 64`.
+- **RoPE is split-half** --- `cat((-x2, x1))` over halves of the head, with
+  `emb = cat((freqs, freqs))`. This is the opposite of Toto's interleaved
+  adjacent-pair convention, so the package will carry two rotary conventions
+  and neither can be borrowed for the other.
+- **Group attention swaps the time and series axes** before attending, then
+  swaps back, and uses no RoPE --- there is no natural ordering along the
+  series axis. Structurally this is Toto's variate layer, but expressed through
+  the mask rather than a reshape, and present in *every* block.
+- **Masks are additive**, `0` for attend and `finfo.min` for refuse, combined
+  as `einsum("qb,bt->qbt", group_mask, time_mask)` so a token attends only to
+  tokens in its own group that are also observed at that time.
+
+`Chronos2LayerNorm` is T5-style: no mean subtraction, a learnable weight, and
+variance accumulated in float32 --- unlike Toto's parameter-free norm.
+
 ## Open questions
 
 1. The exact `instance_norm` and `arcsinh` composition, and whether scaling is
@@ -108,16 +144,21 @@ rule as Toto: a patch attends if it holds at least one observation.
 5. Categorical covariates: the model card advertises real *and* categorical,
    but the forward signature takes float tensors, so the encoding happens
    upstream in the pipeline and needs locating.
-6. Whether anything rescales the forward pass the way `dd_unit_scaling` does in
-   Toto --- nothing so far suggests it, but Toto is the reason to check rather
-   than assume.
+6. ~~Whether anything rescales the forward pass the way `dd_unit_scaling` does
+   in Toto.~~ **Resolved: it does not.** The encoder block reproduces exactly
+   with plain linear layers.
 
 ## Next gates
 
-- Operator spike for the novel components: group attention, the time-encoding
-  channel, and the register token, against the pinned reference.
-- Contract v2 frozen against these findings, then the port, then conformance
-  and pinned parity fixtures.
+Phase A is complete: the checkpoint is pinned, the input contract is understood,
+and the encoder block is verified. What remains is Phase B and Phase C.
+
+- Freeze contract v2 against these findings --- optional group ids and future
+  values alongside the existing context list, with v1 architectures untouched.
+- Port: input embedding with its time-encoding channel, the register token,
+  `instance_norm` composed with `asinh`, the twelve-block encoder, and the
+  21-level output head.
+- Conformance, then pinned parity fixtures, then a `supported` catalogue row.
 
 The reference environment is `chronos-forecasting>=2.0` plus `transformers`;
 the port itself needs neither.
