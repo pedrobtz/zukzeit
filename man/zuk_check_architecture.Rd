@@ -12,6 +12,7 @@ zuk_check_architecture(
   h = 6L,
   quantile_levels = c(0.1, 0.5, 0.9),
   tolerance = 1e-08,
+  rtol = 1e-05,
   crossing_tolerance = tolerance,
   error = !interactive()
 )
@@ -32,7 +33,14 @@ to a deterministic trend-plus-seasonality series of length 64.}
 
 \item{quantile_levels}{Probe quantile levels.}
 
-\item{tolerance}{Numerical tolerance for the batch-agreement check.}
+\item{tolerance}{Absolute tolerance for the batch-agreement check.}
+
+\item{rtol}{Relative tolerance for the batch-agreement check. Agreement is
+asserted as \verb{|batch - loop| <= tolerance + rtol * |loop|}, the criterion
+the parity fixtures use. An absolute threshold alone cannot work here: a
+batched matrix multiply is not obliged to reduce in the same order as an
+unbatched one, so float32 kernels differ by a few ulps of the \emph{values},
+and a checkpoint forecasting in the hundreds cannot meet a fixed 1e-8.}
 
 \item{crossing_tolerance}{How far quantiles may cross before the
 monotonicity check fails. Defaults to \code{tolerance}.}

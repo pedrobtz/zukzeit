@@ -1,5 +1,5 @@
 test_that("all built-in architectures are registered", {
-  expect_setequal(zuk_registry_archs(), c("stub", "ttm", "timesfm"))
+  expect_setequal(zuk_registry_archs(), c("stub", "ttm", "timesfm", "toto2"))
   expect_false(zuk_registry_has("chronos2"))
 })
 

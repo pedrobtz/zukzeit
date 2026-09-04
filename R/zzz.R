@@ -6,6 +6,7 @@ utils::globalVariables(c("object", "new_data"))
   zuk_register_arch("stub", stub_constructor, overwrite = TRUE)
   zuk_register_arch("ttm", ttm_constructor, overwrite = TRUE)
   zuk_register_arch("timesfm", timesfm_constructor, overwrite = TRUE)
+  zuk_register_arch("toto2", toto_constructor, overwrite = TRUE)
 
   # Chronos-2 is intentionally not registered for 0.1.0. The Brulee bridge is
   # kept as prior art in .agents/reference/arch-chronos2.R rather than shipped:

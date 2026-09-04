@@ -16,7 +16,7 @@ package-owned catalogue and does not make arbitrary model IDs available to
 those APIs only after it is curated in \code{zukzeit}, including an immutable
 revision, manifest, licence metadata, contract conformance, and numerical
 parity. Independently constructed \code{\link[=new_zuk_model]{new_zuk_model()}} handles can still use
-the framework-neutral \code{\link[generics:forecast]{forecast()}} path.
+the framework-neutral \code{\link[=forecast]{forecast()}} path.
 
 Verify an implementation with \code{\link[=zuk_check_architecture]{zuk_check_architecture()}}.
 }

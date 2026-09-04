@@ -89,6 +89,15 @@ Chronos-2 port remain required before `0.1.0` is released.
   same check without reading the engine's internals. A `max_context` check the probe is too
   short to reach now reports not-applicable instead of passing, so the summary
   never counts an invariant that did not run.
+* `zuk_check_architecture()`'s batch-agreement check now asserts
+  `|batch - loop| <= tolerance + rtol * |loop|` rather than a bare absolute
+  threshold, matching the criterion the parity fixtures already use. A batched
+  matrix multiply is not obliged to reduce in the same order as an unbatched
+  one, so float32 kernels differ by a few ulps *of the values*: the reference
+  PyTorch implementation shows the same 5e-07 relative spread between batch
+  sizes on identical input. The old fixed `1e-8` was unreachable for any
+  checkpoint forecasting in the hundreds, and had only ever been exercised
+  against small-magnitude synthetic weights.
 * `forecast()` is now re-exported from `generics` rather than defined locally,
   and `as_fable()` is registered onto `fabletools`'s generic from `.onLoad()`
   instead of shadowing it. Attaching `zukzeit` alongside fabletools, modeltime, or
@@ -225,6 +234,13 @@ Chronos-2 port remain required before `0.1.0` is released.
   below `1e-5` — a threshold set by float32 accumulation across LibTorch builds,
   not by the port; the exact-width CPU spike executes successfully. This does not
   yet constitute checkpoint support.
+* **Toto 2.0 4M** has a native R `torch` port: unit-scaled projections, xPos
+  rotary attention over the time axis alternating with full attention over the
+  variate axis, a gated feed-forward path, tau-rule residuals, a float64 causal
+  patch scaler composed with `asinh`, and single-pass quantile decoding. The
+  full network and end-to-end forecasts match the pinned reference on the real
+  checkpoint to within 9e-07 relative. It is catalogued as `experimental`, not
+  `supported`, until committed golden fixtures back that claim offline.
 * **Stub** remains an executable random-walk test fixture, not a foundation
   model.
 * **TTM** remains a registered scaffold deferred until the engine represents

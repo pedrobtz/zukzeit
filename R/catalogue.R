@@ -22,6 +22,24 @@ zuk_catalogue_records <- function() {
       manifest = c("config.json", "model.safetensors")
     ),
     list(
+      model_id = "Datadog/Toto-2.0-4m",
+      architecture = "toto2",
+      revision = "8306a9801cf98c0f5ffe4b2dcc8f496e616d84d9",
+      # Native inference matches the pinned reference, but the row stays
+      # experimental until committed golden fixtures back that claim without a
+      # network. `supported` is a release-controlled promise, not a status.
+      state = "experimental",
+      max_context = 4096L,
+      quantile_levels = seq(0.1, 0.9, by = 0.1),
+      multivariate = FALSE,
+      past_covariates = FALSE,
+      future_covariates = FALSE,
+      n_params = 4144456,
+      size_bytes = 16582848,
+      license = "Apache-2.0",
+      manifest = c("config.json", "model.safetensors")
+    ),
+    list(
       model_id = "ibm-granite/granite-timeseries-ttm-r2",
       architecture = "ttm",
       revision = "d6a79570cac0f33d526601cd3a0fc7c80a8f9a2f",

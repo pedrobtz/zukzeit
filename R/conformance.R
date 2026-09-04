@@ -81,7 +81,13 @@ with_fixed_seed <- function(seed, expr) {
 #'   to a deterministic trend-plus-seasonality series of length 64.
 #' @param h Probe horizon.
 #' @param quantile_levels Probe quantile levels.
-#' @param tolerance Numerical tolerance for the batch-agreement check.
+#' @param tolerance Absolute tolerance for the batch-agreement check.
+#' @param rtol Relative tolerance for the batch-agreement check. Agreement is
+#'   asserted as `|batch - loop| <= tolerance + rtol * |loop|`, the criterion
+#'   the parity fixtures use. An absolute threshold alone cannot work here: a
+#'   batched matrix multiply is not obliged to reduce in the same order as an
+#'   unbatched one, so float32 kernels differ by a few ulps of the *values*,
+#'   and a checkpoint forecasting in the hundreds cannot meet a fixed 1e-8.
 #' @param crossing_tolerance How far quantiles may cross before the
 #'   monotonicity check fails. Defaults to `tolerance`.
 #' @param error If `TRUE` (the default when called non-interactively), fail on
@@ -117,6 +123,7 @@ zuk_check_architecture <- function(constructor,
                                     h = 6L,
                                     quantile_levels = c(0.1, 0.5, 0.9),
                                     tolerance = 1e-8,
+                                    rtol = 1e-5,
                                     crossing_tolerance = tolerance,
                                     error = !interactive()) {
   if (!is.function(constructor)) {
@@ -294,15 +301,23 @@ zuk_check_architecture <- function(constructor,
           paste(which(!shapes), collapse = ", "), h, q
         ))
       }
-      diffs <- vapply(
+      budget <- tolerance + rtol * abs(as.numeric(pred))
+      excess <- vapply(
         batched,
-        function(m) max(abs(as.numeric(m) - as.numeric(pred))),
+        function(m) max(abs(as.numeric(m) - as.numeric(pred)) - budget),
         numeric(1)
       )
-      worst <- max(diffs)
-      if (!is.finite(worst) || worst > tolerance) {
-        sprintf("Batch and loop paths differ by %.3g (tolerance %.3g).",
-                worst, tolerance)
+      worst <- max(excess)
+      if (!is.finite(worst) || worst > 0) {
+        observed <- max(vapply(
+          batched,
+          function(m) max(abs(as.numeric(m) - as.numeric(pred))),
+          numeric(1)
+        ))
+        sprintf(
+          "Batch and loop paths differ by %.3g (atol %.3g, rtol %.3g).",
+          observed, tolerance, rtol
+        )
       } else {
         NULL
       }
