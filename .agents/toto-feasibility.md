@@ -146,6 +146,39 @@ Three are bit-identical; the rest sit at float32 rounding. The foundational
 layer of the port is therefore verified. Attention, the decoder loop, and the
 end-to-end forecast remain.
 
+## Attention
+
+Verified against `toto2.model.SelfAttention` for both regimes. Four details
+carry real parity risk and none are visible from the state dict:
+
+- **Only half of each head dimension is rotated.** `partial_factor = (0.0, 0.5)`
+  splits the 64-wide head into a rotated leading 32 and an untouched trailing
+  32.
+- **Query and key take opposite xPos exponents,** `+1` and `-1`, so their
+  product decays with distance. Applying one exponent to both is a plausible
+  mistake that leaves shapes intact.
+- **Attention is scaled by `1 / qk_dim`, not `1 / sqrt(qk_dim)`** — MuP, to stop
+  logits exploding as width grows. Off by a factor of 8 at `qk_dim = 64`.
+- **The rotation is interleaved,** pairing adjacent channels via `(dim r)` with
+  `r = 2`, rather than the split-half convention used elsewhere in the
+  ecosystem. The cos/sin tables repeat each frequency twice to match.
+
+Structurally: `in_proj` splits `[qk*heads, qk*groups, v*groups] = [256, 256,
+256]`; `PerDimScale` applies to the query only; `qk_norm` is off for this
+checkpoint; variate layers receive **no** rotary projection at all and attend
+non-causally, while time layers are causal.
+
+### Spike result
+
+```
+time-axis layer      max|diff| = 1.863e-09   rel = 1.704e-07
+variate-axis layer   max|diff| = 2.328e-09   rel = 2.649e-07
+```
+
+Both regimes agree with the reference at float32 rounding. Every novel operator
+in the port is now verified; what remains is assembly, preprocessing, decode,
+and the two gates.
+
 ## Pinned inference knobs
 
 Per the decision recorded below, `zukzeit` implements
