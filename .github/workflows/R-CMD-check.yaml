@@ -68,6 +68,49 @@ jobs:
           upload-snapshots: true
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
 
+  # Real-checkpoint parity on every push, using the small model. Toto's
+  # checkpoint is 16 MB against TimesFM's 925 MB and Chronos-2's 478 MB, so this
+  # costs almost nothing and closes the window where a pull request could break
+  # numerical correctness and only find out after merging. The full 1.4 GB gate
+  # below still runs on main.
+  parity-small:
+    runs-on: ubuntu-latest
+    name: numerical parity (small checkpoint)
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: 'release'
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::testthat, any::pkgload
+          needs: check
+
+      - name: Install the LibTorch runtime
+        run: Rscript -e 'torch::install_torch()'
+
+      - name: Cache the pinned Toto checkpoint
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/huggingface
+          key: hf-toto-8306a9801cf98c0f5ffe4b2dcc8f496e616d84d9
+
+      - name: Prefetch the checkpoint
+        run: Rscript -e 'pkgload::load_all("."); zuk_download("Datadog/Toto-2.0-4m")'
+
+      # Naming the architecture rather than `true` keeps this to the one 16 MB
+      # download; the other two stay skipped.
+      - name: Run the Toto checkpoint tests
+        env:
+          ZUK_RUN_CHECKPOINT_TEST: 'toto2'
+        run: Rscript -e 'pkgload::load_all("."); testthat::test_local(".", stop_on_failure = TRUE)'
+
   # The numerical-parity gate: replay the committed golden fixtures against the
   # real pinned checkpoint. This is the only test that proves the port computes
   # the right model rather than merely a well-formed one, so it deserves to be a
@@ -101,19 +144,25 @@ jobs:
       - name: Install the LibTorch runtime
         run: Rscript -e 'torch::install_torch()'
 
-      # Keyed on the pinned revision, so the download happens once and bumping
-      # the checkpoint invalidates the cache by construction rather than by
-      # someone remembering to clear it.
-      - name: Cache the pinned checkpoint
+      # Keyed on every pinned revision, so the download happens once and
+      # bumping any checkpoint invalidates the cache by construction rather than
+      # by someone remembering to clear it. All three must appear here: naming
+      # only one silently re-downloaded the others on every run.
+      - name: Cache the pinned checkpoints
         uses: actions/cache@v6
         with:
           path: ~/.cache/huggingface
-          key: hf-timesfm-1d952420fba87f3c6dee4f240de0f1a0fbc790e3
+          key: >-
+            hf-timesfm-1d952420fba87f3c6dee4f240de0f1a0fbc790e3
+            -toto-8306a9801cf98c0f5ffe4b2dcc8f496e616d84d9
+            -chronos2-29ec3766d36d6f73f0696f85560a422f50e8498c
 
       # Explicit, and before the tests, so a Hub outage or a size mismatch fails
       # here with a download error instead of surfacing as a parity failure.
-      - name: Prefetch the checkpoint
-        run: Rscript -e 'pkgload::load_all("."); zuk_download("google/timesfm-2.5-200m-pytorch")'
+      # About 1.4 GB across the three.
+      - name: Prefetch the checkpoints
+        run: |
+          Rscript -e 'pkgload::load_all("."); for (id in zuk_models()$model_id) zuk_download(id)'
 
       - name: Run the checkpoint-gated suite
         env:

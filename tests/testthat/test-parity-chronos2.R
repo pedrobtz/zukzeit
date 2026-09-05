@@ -7,7 +7,7 @@
 chronos2_fixture_dir <- function() test_path("fixtures", "chronos2")
 
 skip_unless_chronos2_checkpoint <- function() {
-  skip_if_not(identical(Sys.getenv("ZUK_RUN_CHECKPOINT_TEST"), "true"))
+  skip_unless_checkpoint("chronos2")
   skip_if_no_torch()
   skip_if_not_installed("jsonlite")
   skip_if_not(

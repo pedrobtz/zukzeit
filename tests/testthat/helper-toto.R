@@ -1,8 +1,17 @@
-# A tiny Toto of the same shape as the real one: same layer types, same weight
-# map, same decode path, ~19k parameters instead of 4.1M. The structural
-# invariants --- batch/loop agreement, determinism, monotone quantiles, the
-# unobserved-patch masking --- hold for any weights, so they can be checked on
-# every platform rather than only where the checkpoint is cached.
+# Toto at its real dimensions, with random weights instead of trained ones.
+#
+# Unlike the TimesFM helper this is *not* reduced, and cannot be:
+# `toto_constructor()` validates every dimension against the pinned
+# configuration, so a smaller variant is refused before construction. Going
+# around it with `toto_module()` would buy a smaller model at the cost of
+# testing the constructor, which is a worse trade -- and it would buy little,
+# since construction takes 0.2s and the whole file runs in about the same time
+# as the reduced TimesFM one.
+#
+# The point is that no checkpoint is downloaded. The structural invariants ---
+# batch/loop agreement, determinism, monotone quantiles, the unobserved-patch
+# masking --- hold for any weights, so they run on every platform rather than
+# only where the 16 MB checkpoint is cached.
 toto_synthetic_config <- function() {
   list(
     architecture = "toto2",

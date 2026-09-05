@@ -4,7 +4,7 @@
 # Python nor the Hub. Skips until the numerical port lands and fixtures exist.
 
 test_that("native TimesFM matches the reference on golden fixtures", {
-  skip_if_not(identical(Sys.getenv("ZUK_RUN_CHECKPOINT_TEST"), "true"))
+  skip_unless_checkpoint("timesfm")
   skip_if_not_installed("torch")
   skip_if_not_installed("jsonlite")
   dir <- testthat::test_path("fixtures", "timesfm")
@@ -63,7 +63,7 @@ test_that("native TimesFM matches the reference on golden fixtures", {
 })
 
 test_that("real TimesFM is conforming, deterministic, and silent", {
-  skip_if_not(identical(Sys.getenv("ZUK_RUN_CHECKPOINT_TEST"), "true"))
+  skip_unless_checkpoint("timesfm")
   model <- zuk_pretrained(
     "google/timesfm-2.5-200m-pytorch", device = "cpu"
   )

@@ -75,7 +75,7 @@ test_that("missing and corrupt safetensors files are actionable checkpoint error
 })
 
 test_that("the real pinned checkpoint can load locally when explicitly enabled", {
-  skip_if_not(identical(Sys.getenv("ZUK_RUN_CHECKPOINT_TEST"), "true"))
+  skip_unless_checkpoint("timesfm")
   skip_if_no_torch()
   record <- zuk_catalogue_get("google/timesfm-2.5-200m-pytorch")
   paths <- vapply(record$manifest, function(file) {

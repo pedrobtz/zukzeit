@@ -6,8 +6,8 @@
 # default "auto" resolves to CUDA or MPS on an accelerator host, and this gate is
 # about the documented portable baseline.
 
-skip_unless_checkpoint <- function() {
-  skip_if_not(identical(Sys.getenv("ZUK_RUN_CHECKPOINT_TEST"), "true"))
+skip_unless_timesfm_checkpoint <- function() {
+  skip_unless_checkpoint("timesfm")
   skip_if_no_torch()
   record <- zuk_catalogue_get("google/timesfm-2.5-200m-pytorch")
   skip_if_not(identical(record$state, "supported"), "TimesFM is not supported.")
@@ -31,7 +31,7 @@ smoke_panel <- function(n = 96L, keys = c("store_a", "store_b")) {
 }
 
 test_that("journey 1: plain-R panel forecasting from a data frame", {
-  record <- skip_unless_checkpoint()
+  record <- skip_unless_timesfm_checkpoint()
   model <- zuk_pretrained(record$model_id, revision = record$revision,
                            device = "cpu")
   panel <- smoke_panel()
@@ -62,7 +62,7 @@ test_that("journey 1: plain-R panel forecasting from a data frame", {
 })
 
 test_that("journey 2: the batched fable route", {
-  record <- skip_unless_checkpoint()
+  record <- skip_unless_timesfm_checkpoint()
   skip_if_not_installed("fabletools")
   skip_if_not_installed("tsibble")
   model <- zuk_pretrained(record$model_id, revision = record$revision,
@@ -83,7 +83,7 @@ test_that("journey 2: the batched fable route", {
 })
 
 test_that("journey 3: TSFM() composed inside fabletools::model()", {
-  record <- skip_unless_checkpoint()
+  record <- skip_unless_timesfm_checkpoint()
   skip_if_not_installed("fabletools")
   skip_if_not_installed("tsibble")
   old <- options(zuk.max_loaded_models = 1L)
@@ -109,7 +109,7 @@ test_that("journey 3: TSFM() composed inside fabletools::model()", {
 })
 
 test_that("journey 4: parsnip fit() and predict()", {
-  record <- skip_unless_checkpoint()
+  record <- skip_unless_timesfm_checkpoint()
   skip_if_not_installed("parsnip")
   skip_if_not_installed("hardhat")
 
@@ -132,7 +132,7 @@ test_that("journey 4: parsnip fit() and predict()", {
 })
 
 test_that("forecasts are antisymmetric under sign flip", {
-  record <- skip_unless_checkpoint()
+  record <- skip_unless_timesfm_checkpoint()
   model <- zuk_pretrained(record$model_id, revision = record$revision,
                            device = "cpu")
   # The port symmetrises a forward and a flipped pass (force_flip_invariance),
@@ -153,7 +153,7 @@ test_that("forecasts are antisymmetric under sign flip", {
 })
 
 test_that("accelerator inference agrees with the CPU baseline", {
-  record <- skip_unless_checkpoint()
+  record <- skip_unless_timesfm_checkpoint()
   device <- if (isTRUE(tryCatch(torch::backends_mps_is_available(),
                                error = function(e) FALSE))) {
     "mps"
@@ -181,7 +181,7 @@ test_that("accelerator inference agrees with the CPU baseline", {
 })
 
 test_that("the composed and batched routes agree on one series", {
-  record <- skip_unless_checkpoint()
+  record <- skip_unless_timesfm_checkpoint()
   skip_if_not_installed("fabletools")
   skip_if_not_installed("tsibble")
   panel <- smoke_panel(keys = "store_a")

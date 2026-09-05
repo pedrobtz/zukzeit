@@ -240,7 +240,8 @@ test_that("every supported checkpoint loads through the public loader", {
   # of three supported checkpoints unloadable through the documented path --
   # Toto's config names no architecture, and Chronos-2 names a class no alias
   # covers -- and nothing caught it.
-  skip_if_not(identical(Sys.getenv("ZUK_RUN_CHECKPOINT_TEST"), "true"))
+  # This one walks every supported row, so it needs all of them.
+  for (architecture in zuk_models()$architecture) skip_unless_checkpoint(architecture)
   skip_if_no_torch()
 
   supported <- zuk_models()

@@ -28,6 +28,36 @@ Upstream requires patch-aligned contexts and raises otherwise, so every length
 here is a multiple of 32. The port left-pads instead, and that padding path is
 covered by `batch_agreement`.
 
+## Running these tests
+
+Replaying a fixture needs its checkpoint, so the parity tests are opt-in
+through `ZUK_RUN_CHECKPOINT_TEST`. It names architectures rather than being
+all-or-nothing, because the three checkpoints differ by two orders of
+magnitude in size and the cheapest useful gate should not cost the most:
+
+```sh
+ZUK_RUN_CHECKPOINT_TEST=toto2            # 16 MB
+ZUK_RUN_CHECKPOINT_TEST=toto2,chronos2   # 495 MB
+ZUK_RUN_CHECKPOINT_TEST=true             # all three, about 1.4 GB
+```
+
+Roughly what each buys, from the default suite upwards:
+
+| Setting | Tests | Download |
+|---|---|---|
+| unset | 612 | none |
+| `toto2` | 655 | 16 MB |
+| `toto2,chronos2` | 708 | 495 MB |
+| `true` | 787 | 1.4 GB |
+
+CI runs the unset tier on every configuration --- that job is the standing
+proof the suite skips cleanly on a machine without LibTorch, which is what CRAN
+sees --- plus `toto2` on every push, and the full set on `main`.
+
+Nothing here needs the checkpoints to test *structure*. Each architecture also
+has a synthetic-weight helper that exercises batch/loop agreement, determinism,
+monotone quantiles, and masking on random weights, with no download at all.
+
 ## Tolerance
 
 Comparisons use `|actual - expected| <= atol + rtol * |expected|` — the criterion

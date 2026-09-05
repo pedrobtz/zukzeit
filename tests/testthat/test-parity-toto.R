@@ -9,7 +9,7 @@
 toto_fixture_dir <- function() test_path("fixtures", "toto")
 
 skip_unless_toto_checkpoint <- function() {
-  skip_if_not(identical(Sys.getenv("ZUK_RUN_CHECKPOINT_TEST"), "true"))
+  skip_unless_checkpoint("toto2")
   skip_if_no_torch()
   skip_if_not_installed("jsonlite")
   skip_if_not(
