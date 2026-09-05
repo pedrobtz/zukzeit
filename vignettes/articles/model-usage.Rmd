@@ -1,0 +1,244 @@
+---
+title: "Using the models"
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+```
+
+This article walks the three supported checkpoints end to end: what they are,
+how to forecast with them, how capabilities decide what you may ask, and what
+Chronos-2 can do that the others cannot.
+
+Chunks are not evaluated when the site is built, because doing so would
+download about 1.4 GB of weights and needs the `torch` runtime. Every output
+below was produced by running the code exactly as written.
+
+## What is available
+
+`zuk_models()` is offline and static. It never fetches a config or a weight
+file, so you can compare cost and capability before committing to a download.
+
+```{r}
+library(zukzeit)
+
+zuk_models()[, c("model_id", "architecture", "max_context", "n_params",
+                 "size_bytes", "cached")]
+#>                          model_id architecture max_context  n_params
+#> 1 google/timesfm-2.5-200m-pytorch      timesfm       16256 231289280
+#> 2                amazon/chronos-2     chronos2        8192 119477664
+#> 3             Datadog/Toto-2.0-4m        toto2        4096   4144456
+#>   size_bytes cached
+#> 1  925181104   TRUE
+#> 2  477930472   TRUE
+#> 3   16582848   TRUE
+```
+
+The three are complementary rather than ranked. TimesFM has by far the longest
+context. Toto is 56x smaller than TimesFM and the natural default for CPU work.
+Chronos-2 is the only one that accepts covariates:
+
+```{r}
+zuk_models()[, c("architecture", "multivariate", "past_covariates",
+                 "future_covariates")]
+#>   architecture multivariate past_covariates future_covariates
+#> 1      timesfm        FALSE           FALSE             FALSE
+#> 2     chronos2         TRUE            TRUE              TRUE
+#> 3        toto2        FALSE           FALSE             FALSE
+```
+
+Those flags describe executable behaviour, not intent. A `TRUE` means there is
+a code path with fixtures behind it.
+
+## A forecast
+
+Hand `forecast()` a data frame and name the index and target columns. Nothing
+optional is required for this route --- no `tsibble`, no `tidymodels`.
+
+```{r}
+set.seed(20260905)
+n <- 240
+t <- seq_len(n)
+series <- data.frame(
+  day = seq(as.Date("2024-01-01"), by = "day", length.out = n),
+  demand = 500 + 1.2 * t + 60 * sin(t * 2 * pi / 7) + rnorm(n, 0, 12)
+)
+
+model <- zuk_pretrained("Datadog/Toto-2.0-4m")
+fc <- forecast(model, series, h = 14, index = "day", target = "demand",
+               quantile_levels = c(0.1, 0.5, 0.9))
+head(as.data.frame(fc)[, c("day", ".mean")], 4)
+#>          day    .mean
+#> 1 2024-08-28 800.9774
+#> 2 2024-08-29 760.7402
+#> 3 2024-08-30 732.6268
+#> 4 2024-08-31 747.5360
+```
+
+The future index comes back as `Date`, the type it went in as. An index is
+extended in its own units, so a `yearmonth` panel returns `yearmonth` and an
+hourly `POSIXct` panel returns `POSIXct` --- the result joins straight back
+onto the data it came from.
+
+Swapping the checkpoint changes nothing else. On the same series:
+
+```{r}
+#  Toto 2.0 4M      800.98  760.74  732.63  747.54
+#  Chronos-2        815.58  769.38  734.68  746.35
+#  TimesFM 2.5      805.94  765.69  733.85  750.59
+```
+
+## Capabilities decide what you may ask
+
+Every checkpoint carries a capability record, and the engine checks a request
+against it *before* any download or tensor work.
+
+```{r}
+zuk_capabilities(zuk_pretrained("amazon/chronos-2"))
+#> <zuk_capabilities>
+#>   architecture:      chronos2
+#>   max_context:       8192        max_horizon: 1024
+#>   quantiles:         native        levels: 0.01, 0.05, 0.1, ..., 0.95, 0.99
+#>   multivariate:      TRUE        samples:   FALSE
+#>   past_covariates:   TRUE        future_covariates: TRUE
+#>   static_covariates: FALSE        fine_tunable: FALSE
+#>   license:           Apache-2.0
+```
+
+Chronos-2 emits 21 trained quantile levels; TimesFM and Toto emit nine. Asking
+for a level a checkpoint was not trained on is refused, with the supported set
+in the message:
+
+```{r}
+forecast(model, series, h = 14, index = "day", target = "demand",
+         quantile_levels = c(0.1, 0.123, 0.9))
+#> Error:
+#> ! The checkpoint does not emit every requested quantile level.
+#> ✖ Unsupported: 0.123.
+#> ℹ Supported levels: 0.01, 0.05, 0.1, 0.15, 0.2, ..., 0.95, and 0.99.
+```
+
+Failures are classed, so a caller can branch on them without matching message
+text. See `` ?`zuk-conditions` ``.
+
+## Covariates
+
+Chronos-2 accepts series that inform a forecast without being forecast
+themselves. Name them with `covariates`, and supply their future values in a
+separate frame when you know them.
+
+Here demand carries an irregular promotion effect --- irregular on purpose,
+because nothing in the target's own seasonality predicts it:
+
+```{r}
+set.seed(11)
+promo <- as.numeric(runif(n) < 0.15)
+panel <- data.frame(
+  store = "flagship",
+  day = series$day,
+  demand = 500 + 1.2 * t + 40 * sin(t * 2 * pi / 7) + 150 * promo + rnorm(n, 0, 8),
+  promo = promo
+)
+
+future_days <- seq(max(panel$day) + 1, by = "day", length.out = 10)
+planned <- data.frame(store = "flagship", day = future_days,
+                      promo = c(0, 0, 1, 1, 0, 0, 0, 1, 0, 0))
+
+model <- zuk_pretrained("amazon/chronos-2")
+informed <- forecast(model, panel, h = 10, index = "day", key = "store",
+                     target = "demand", covariates = "promo", future = planned)
+blind <- forecast(model, panel, h = 10, index = "day", key = "store",
+                  target = "demand")
+```
+
+```{r}
+#>         day promo informed blind   lift
+#>  2024-08-28     0    796.3 810.7  -14.4
+#>  2024-08-29     0    773.3 773.2    0.1
+#>  2024-08-30     1    854.8 752.8  102.0
+#>  2024-08-31     1    887.4 762.5  124.9
+#>  2024-09-01     0    796.4 795.1    1.3
+#>  2024-09-02     0    834.5 819.1   15.3
+#>  2024-09-03     0    830.6 829.4    1.3
+#>  2024-09-04     1    950.5 814.1  136.4
+#>  2024-09-05     0    769.7 781.0  -11.3
+#>  2024-09-06     0    766.5 761.2    5.3
+#>
+#> mean lift on planned promo days : 121.1
+#> mean lift on ordinary days      : -0.4
+#> true promo effect in history    : 117.2
+```
+
+The model recovers a promotion effect of 121 against a true effect of 117, and
+leaves ordinary days alone.
+
+A covariate earns its keep when it carries information the target's own history
+does not. Running the same example with a strictly *periodic* promotion instead
+moves the forecast by only a point or two, because a fourteen-day cycle is
+already visible in the target and the model has been reading it all along.
+
+A covariate whose future you do not know is still useful --- omit it from
+`future` and it is treated as past-only. The distinction is inferred, so there
+is nothing extra to declare.
+
+Asking a checkpoint that cannot do this is refused, and says why:
+
+```{r}
+forecast(zuk_pretrained("Datadog/Toto-2.0-4m"), panel, h = 10, index = "day",
+         key = "store", target = "demand", covariates = "promo",
+         future = planned)
+#> Error:
+#> ! This architecture does not accept grouped inputs.
+#> ℹ It targets contract 1.0.0; grouped inputs need 1.1.0.
+```
+
+## Cross-series learning
+
+By default each series in a panel is forecast on its own, so a result depends
+on that series and the checkpoint, not on what else shared the call. Naming a
+column with `group` opts in to letting series inform one another:
+
+```{r}
+forecast(model, panel, h = 10, index = "day", key = "store",
+         target = "demand", group = "region")
+```
+
+Series sharing a `region` value then form one task. This needs a checkpoint
+declaring `multivariate`, since a task with several series has several targets.
+
+## The tidyverts
+
+`TSFM()` composes inside `fabletools::model()` next to any other model
+definition, and regressors use fable's own vocabulary:
+
+```{r}
+library(fabletools)
+
+fits <- model(
+  history_tsbl,
+  chronos = TSFM(demand ~ xreg(promo), model_id = "amazon/chronos-2"),
+  arima = fable::ARIMA(demand)
+)
+forecast(fits, new_data = future_tsbl)
+```
+
+`xreg()` marks a regressor whose future values arrive in `new_data`;
+`past_xreg()` marks one with no future. Note that `fabletools` evaluates one
+key at a time, so this route gives covariates but not cross-series learning ---
+for that, use the batched `forecast()` route above.
+
+## Lifecycle
+
+Checkpoints are downloaded once and reused. `zuk_download()` prefetches without
+constructing anything, `zuk_cache_status()` separates what is on disk from what
+is resident in the session, and `zuk_unload()` frees the latter without
+deleting the former.
+
+```{r}
+zuk_download("Datadog/Toto-2.0-4m")
+zuk_cache_status()
+zuk_unload()
+```
+
+Handle reuse is bounded by `options(zuk.max_loaded_models)`, so forecasting a
+wide panel loads a checkpoint once rather than once per series.

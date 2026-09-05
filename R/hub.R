@@ -168,7 +168,12 @@ zuk_resolve_config <- function(model_id, revision, paths = NULL, record = NULL,
       )
     }
   )
-  config$architecture <- normalize_architecture(config)
+  # The curated catalogue is package-owned and names the architecture for every
+  # entry it publishes, so it decides. Sniffing `config.json` is a fallback for
+  # configs the catalogue does not describe: Toto's declares no architecture at
+  # all, and Chronos-2 declares a class name no alias covers, so deriving it
+  # from the file made two of three supported checkpoints unloadable.
+  config$architecture <- record$architecture %||% normalize_architecture(config)
   config$model_id <- model_id
   config$revision <- revision
   config$device <- device

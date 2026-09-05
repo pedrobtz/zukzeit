@@ -11,8 +11,11 @@ NEGATIVE_INFINITY <- -3.4028234663852886e38
 # the Toto port's causal scaler this looks at the entire context at once, so a
 # patch is normalised by statistics that include everything after it.
 chronos2_instance_norm <- function(values, observed, epsilon = 1e-5) {
-  high <- values$to(dtype = torch::torch_float64())
-  keep <- observed$to(dtype = torch::torch_float64())
+  # float32, matching the reference. Accumulating in float64 here would be
+  # strictly more precise and would still pass parity, but it is a deviation
+  # and it cannot run on backends without double precision.
+  high <- values$to(dtype = torch::torch_float32())
+  keep <- observed$to(dtype = torch::torch_float32())
   counts <- keep$sum(dim = -1, keepdim = TRUE)$clamp_min(1)
   location <- (high * keep)$sum(dim = -1, keepdim = TRUE) / counts
   spread <- torch::torch_sqrt(

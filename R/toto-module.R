@@ -34,8 +34,11 @@ toto_unit_silu <- function(input) {
 
 # `U.residual_add`. Its partner `U.residual_split` is the identity in the
 # forward pass --- it only shapes gradients --- so it has no counterpart here.
+# `sqrt()` dispatches for both an R scalar and a 0-dimension tensor, so this
+# never constructs a tensor of its own --- constructing one without a device is
+# how a CPU scalar leaks into an accelerator graph.
 toto_residual_add <- function(hidden, skip, tau) {
-  (tau * hidden + skip) / torch::torch_sqrt(1 + tau * tau)
+  (tau * hidden + skip) / sqrt(1 + tau * tau)
 }
 
 # `uu.PerDimScale`. Note the absence of a 1/sqrt(head_dim) factor: unit-scaled
@@ -86,7 +89,7 @@ toto_residual_mlp <- torch::nn_module(
     hidden <- toto_unit_silu(toto_unit_linear(input, self$linear1, self$linear1_bias))
     hidden <- second(hidden, self$linear2, self$linear2_bias)
     skip <- second(input, self$skip, self$skip_bias)
-    toto_residual_add(hidden, skip, torch::torch_tensor(self$tau))
+    toto_residual_add(hidden, skip, self$tau)
   }
 )
 

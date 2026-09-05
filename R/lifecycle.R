@@ -168,7 +168,10 @@ zuk_read_safetensors_metadata <- function(path, record = NULL) {
     {
       connection <- file(path, open = "rb")
       reader <- safetensors::safetensors$new(connection, framework = "torch")
-      reader$metadata
+      # `__metadata__` is the safetensors format's reserved header block, not a
+      # tensor. Some checkpoints carry one and some do not, so leaving it in
+      # makes an otherwise valid state dict look like it is missing an entry.
+      reader$metadata[names(reader$metadata) != "__metadata__"]
     },
     error = function(e) {
       zuk_abort_checkpoint(

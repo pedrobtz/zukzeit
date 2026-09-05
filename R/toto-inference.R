@@ -22,8 +22,25 @@ toto_round_up <- function(value, multiple) {
 # nothing after it.
 toto_causal_scaler <- function(data, mask, patch, minimum_scale = 1e-6,
                                correction = 1) {
-  high <- data$to(dtype = torch::torch_float64())
-  keep <- mask$to(dtype = torch::torch_float64())
+  # The reference accumulates in float64 and falls back to float32 where the
+  # backend has no double precision, warning when it does. MPS is exactly that
+  # case; porting the float64 without the fallback made the model unusable on
+  # Apple silicon.
+  precision <- tryCatch(
+    {
+      data$to(dtype = torch::torch_float64())
+      torch::torch_float64()
+    },
+    error = function(e) {
+      cli::cli_warn(c(
+        "Float64 is unsupported on device {.val {as.character(data$device)}}.",
+        "i" = "Using float32 for the scaler; forecasts may differ in the last digits."
+      ))
+      torch::torch_float32()
+    }
+  )
+  high <- data$to(dtype = precision)
+  keep <- mask$to(dtype = precision)
   counts <- torch::torch_cumsum(keep, dim = -1)$clamp_min(1)
   location <- torch::torch_cumsum(high * keep, dim = -1) / counts
 

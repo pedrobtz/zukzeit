@@ -232,3 +232,24 @@ test_that("unknown revisions and unregistered architectures fail before download
   expect_identical(architecture_error$capability, "architecture")
   expect_false(reached_download)
 })
+
+test_that("every supported checkpoint loads through the public loader", {
+  # Regression: the port tests construct handles by calling each architecture's
+  # constructor directly, which bypasses zuk_pretrained() entirely. Deriving the
+  # architecture from config.json rather than from the curated record left two
+  # of three supported checkpoints unloadable through the documented path --
+  # Toto's config names no architecture, and Chronos-2 names a class no alias
+  # covers -- and nothing caught it.
+  skip_if_not(identical(Sys.getenv("ZUK_RUN_CHECKPOINT_TEST"), "true"))
+  skip_if_no_torch()
+
+  supported <- zuk_models()
+  for (index in seq_len(nrow(supported))) {
+    model <- zuk_pretrained(supported$model_id[[index]])
+    expect_s3_class(model, "zuk_model")
+    expect_identical(model$architecture, supported$architecture[[index]])
+    expect_identical(model$model_id, supported$model_id[[index]])
+    expect_identical(model$capabilities$max_context, supported$max_context[[index]])
+    zuk_unload()
+  }
+})
