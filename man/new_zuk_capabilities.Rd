@@ -34,9 +34,15 @@ or \code{Inf} when the architecture has no smaller declared limit.}
 emit, or \code{NULL} when a native-quantile architecture accepts arbitrary
 levels.}
 
-\item{multivariate, samples, past_covariates, future_covariates, static_covariates, fine_tunable}{Reserved logical fields. They must remain \code{FALSE} in contract
-v1 because the forward signature has no channel for those inputs or
-outputs.}
+\item{multivariate, past_covariates, future_covariates}{Grouped-input
+channels. They may be \code{TRUE} only for an architecture written against
+contract 1.1 or later; \code{\link[=new_zuk_model]{new_zuk_model()}} refuses the combination
+otherwise. See \verb{?}\link{zuk-architecture-contract}.}
+
+\item{samples, static_covariates, fine_tunable}{Reserved logical fields. They
+must remain \code{FALSE}: no contract version has an execution channel for
+those inputs or outputs, and declaring one would describe behaviour that
+cannot run.}
 
 \item{license}{Character scalar, the SPDX identifier of the \emph{weight} licence.}
 }

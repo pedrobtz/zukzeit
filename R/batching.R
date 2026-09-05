@@ -232,6 +232,123 @@ validate_quantile_matrix <- function(x, h, quantile_levels, model,
   x
 }
 
+# ---- grouped inputs (contract 1.1) ------------------------------------------
+
+# Validate the `groups` record against the request and the architecture's
+# declared capabilities. Everything here is refused before any tensor work, so
+# an unsupported task costs nothing.
+validate_groups <- function(groups, contexts, horizons, model,
+                            call = rlang::caller_env()) {
+  caps <- model$capabilities
+  n <- length(contexts)
+  refuse <- function(message, capability, requested, supported) {
+    zuk_abort_capability(message, model_id = model$model_id,
+                         revision = model$revision, capability = capability,
+                         requested = requested, supported = supported,
+                         call = call)
+  }
+  if (!zuk_supports_groups(model)) {
+    zuk_abort_contract(
+      c(
+        "This architecture does not accept grouped inputs.",
+        "i" = "It targets contract {format(model$contract_version)}; grouped inputs need 1.1.0."
+      ),
+      architecture = model$architecture,
+      model_id = model$model_id,
+      contract = "grouped inputs",
+      expected = "contract_version >= 1.1.0",
+      actual = format(model$contract_version),
+      call = call
+    )
+  }
+  if (!is.list(groups) || !all(c("id", "target") %in% names(groups))) {
+    refuse("{.arg groups} must be a list with {.field id} and {.field target}.",
+           "groups", names(groups), c("id", "target", "future"))
+  }
+  groups$future <- groups$future %||% vector("list", n)
+  lengths_ok <- c(id = length(groups$id), target = length(groups$target),
+                  future = length(groups$future)) == n
+  if (!all(lengths_ok)) {
+    refuse("Every {.arg groups} field must have one entry per context.",
+           "groups", names(lengths_ok)[!lengths_ok], n)
+  }
+  if (!is.logical(groups$target) || anyNA(groups$target)) {
+    refuse("{.field target} must be a non-missing logical vector.",
+           "groups", class(groups$target), "logical")
+  }
+  if (anyNA(groups$id)) {
+    refuse("{.field id} must not contain missing values.", "groups", groups$id,
+           "one non-missing label per context")
+  }
+
+  ids <- as.character(groups$id)
+  has_future <- !vapply(groups$future, is.null, logical(1))
+  if (any(!groups$target) && !isTRUE(caps$past_covariates) &&
+      !isTRUE(caps$future_covariates)) {
+    refuse("This model does not accept covariate rows.", "past_covariates",
+           sum(!groups$target), 0L)
+  }
+  if (any(!groups$target & !has_future) && !isTRUE(caps$past_covariates)) {
+    refuse("This model does not accept past-only covariates.",
+           "past_covariates", sum(!groups$target & !has_future), 0L)
+  }
+  if (any(has_future) && !isTRUE(caps$future_covariates)) {
+    refuse("This model does not accept future-known covariates.",
+           "future_covariates", sum(has_future), 0L)
+  }
+  if (any(has_future & groups$target)) {
+    refuse("A target row cannot carry known future values.", "groups",
+           which(has_future & groups$target), "future values on covariate rows only")
+  }
+  targets_per_task <- tapply(groups$target, ids, sum)
+  if (any(targets_per_task == 0L)) {
+    refuse("Every task must contain at least one target row.", "groups",
+           names(targets_per_task)[targets_per_task == 0L], "one or more targets")
+  }
+  if (any(targets_per_task > 1L) && !isTRUE(caps$multivariate)) {
+    refuse("This model forecasts one target per task.", "multivariate",
+           max(targets_per_task), 1L)
+  }
+  # The future window is shared within a task, so its rows must agree on it.
+  spread <- tapply(as.integer(horizons), ids, function(h) length(unique(h)))
+  if (any(spread > 1L)) {
+    refuse("Rows in a task must share one horizon.", "horizon",
+           names(spread)[spread > 1L], "one horizon per task")
+  }
+  wrong <- which(has_future & vapply(seq_len(n), function(i) {
+    !is.null(groups$future[[i]]) &&
+      length(groups$future[[i]]) != as.integer(horizons)[[i]]
+  }, logical(1)))
+  if (length(wrong)) {
+    refuse("Known future values must be exactly as long as the horizon.",
+           "future_covariates", wrong, "length(future[[i]]) == horizons[[i]]")
+  }
+  groups$id <- ids
+  groups
+}
+
+# Chunk whole tasks rather than rows: a task's rows are attended together, so
+# splitting one across batches would change the answer.
+group_chunks <- function(ids, batch_size) {
+  tasks <- split(seq_along(ids), factor(ids, levels = unique(ids)))
+  chunks <- list()
+  current <- integer()
+  for (task in tasks) {
+    if (length(current) && length(current) + length(task) > batch_size) {
+      chunks[[length(chunks) + 1L]] <- current
+      current <- integer()
+    }
+    current <- c(current, task)
+  }
+  if (length(current)) chunks[[length(chunks) + 1L]] <- current
+  chunks
+}
+
+subset_groups <- function(groups, index) {
+  list(id = groups$id[index], target = groups$target[index],
+       future = groups$future[index])
+}
+
 #' Run a model over many series in batches
 #'
 #' Truncates each context to the model's `max_context`, then evaluates the
@@ -245,6 +362,11 @@ validate_quantile_matrix <- function(x, h, quantile_levels, model,
 #' @param batch_size Series per batch for vectorised models; defaults to
 #'   `getOption("zuk.batch_size", 64L)`.
 #' @param device Device string; resolved via [zuk_resolve_device()].
+#' @param groups Optional grouped-input record for architectures written
+#'   against contract 1.1 or later: a list of `id`, `target`, and `future`, each
+#'   with one entry per context. See `?`[zuk-architecture-contract]. When
+#'   supplied, one matrix is returned per **target** row; when `NULL`, every row
+#'   is a target and the result aligns to `contexts` as it always has.
 #' @return A list of quantile matrices.
 #' @export
 #' @examples
@@ -262,7 +384,7 @@ validate_quantile_matrix <- function(x, h, quantile_levels, model,
 #'
 #' zuk_unload("stub")
 zuk_run_batches <- function(model, contexts, horizons, quantile_levels,
-                             batch_size = NULL, device = NULL) {
+                             batch_size = NULL, device = NULL, groups = NULL) {
   if (!inherits(model, "zuk_model")) {
     zuk_abort_contract(
       "{.arg model} must be a {.cls zuk_model}.",
@@ -309,13 +431,28 @@ zuk_run_batches <- function(model, contexts, horizons, quantile_levels,
   batch_size <- as.integer(batch_size)
   device <- zuk_resolve_device(device %||% model$device)
 
+  if (!is.null(groups)) {
+    groups <- validate_groups(groups, contexts, horizons, model)
+  }
+
   if (is.function(model$predict_batch_fn)) {
     out <- vector("list", n)
-    groups <- split(seq_len(n), (seq_len(n) - 1L) %/% batch_size)
-    for (g in groups) {
+    chunks <- if (is.null(groups)) {
+      split(seq_len(n), (seq_len(n) - 1L) %/% batch_size)
+    } else {
+      group_chunks(groups$id, batch_size)
+    }
+    for (g in chunks) {
       zuk_check_user_interrupt()
-      res <- model$predict_batch_fn(contexts[g], horizons[g], quantile_levels,
-                                    device = device)
+      res <- if (is.null(groups)) {
+        model$predict_batch_fn(contexts[g], horizons[g], quantile_levels,
+                               device = device)
+      } else {
+        model$predict_batch_fn(contexts[g], horizons[g], quantile_levels,
+                               device = device, groups = subset_groups(groups, g))
+      }
+      # A grouped call answers for its target rows only.
+      if (!is.null(groups)) g <- g[groups$target[g]]
       if (!is.list(res) || length(res) != length(g)) {
         zuk_abort_contract(
           "The model's batch function returned an invalid result collection.",
@@ -333,8 +470,22 @@ zuk_run_batches <- function(model, contexts, horizons, quantile_levels,
       })
       out[g] <- res
     }
+    if (!is.null(groups)) out <- out[groups$target]
     out
   } else {
+    if (!is.null(groups) && !all(groups$target)) {
+      zuk_abort_contract(
+        c(
+          "Covariate rows need a batch forward pass.",
+          "i" = "This architecture supplies only {.code predict_fn}, which forecasts one series."
+        ),
+        architecture = model$architecture,
+        model_id = model$model_id,
+        contract = "grouped inputs",
+        expected = "predict_batch_fn",
+        actual = "predict_fn only"
+      )
+    }
     lapply(seq_len(n), function(i) {
       zuk_check_user_interrupt()
       validate_quantile_matrix(

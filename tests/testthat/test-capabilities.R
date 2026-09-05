@@ -16,13 +16,27 @@ test_that("capabilities constructor coerces and defaults", {
   expect_identical(caps$license, "Apache-2.0")
 })
 
-test_that("contract v1 refuses declarations with no execution channel", {
+test_that("declarations with no execution channel are refused", {
+  # Sample paths and fine-tuning have no channel at any contract version, so
+  # the capability record itself refuses them.
   error <- expect_error(
-    new_zuk_capabilities("bad", 128L, multivariate = TRUE),
+    new_zuk_capabilities("bad", 128L, samples = TRUE),
     class = "zuk_error_contract"
   )
   expect_s3_class(error, "zuk_error_internal")
   expect_identical(error$contract, "capability declaration")
+
+  # The grouped-input flags do have a channel, but only from contract 1.1. The
+  # capability record cannot judge that -- it does not know which version the
+  # architecture targets -- so new_zuk_model() enforces it instead.
+  expect_s3_class(
+    new_zuk_capabilities("ok", 128L, multivariate = TRUE), "zuk_capabilities"
+  )
+  expect_error(
+    new_zuk_model("bad", list(), new_zuk_capabilities("bad", 128L, multivariate = TRUE),
+                  function(context, h, quantile_levels) matrix(0, h, 1L)),
+    class = "zuk_error_contract"
+  )
 })
 
 test_that("capabilities print is informative", {

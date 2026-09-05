@@ -15,9 +15,14 @@
 #' @param quantile_levels Numeric vector of quantile levels the checkpoint can
 #'   emit, or `NULL` when a native-quantile architecture accepts arbitrary
 #'   levels.
-#' @param multivariate,samples,past_covariates,future_covariates,static_covariates,fine_tunable Reserved logical fields. They must remain `FALSE` in contract
-#'   v1 because the forward signature has no channel for those inputs or
-#'   outputs.
+#' @param multivariate,past_covariates,future_covariates Grouped-input
+#'   channels. They may be `TRUE` only for an architecture written against
+#'   contract 1.1 or later; [new_zuk_model()] refuses the combination
+#'   otherwise. See `?`[zuk-architecture-contract].
+#' @param samples,static_covariates,fine_tunable Reserved logical fields. They
+#'   must remain `FALSE`: no contract version has an execution channel for
+#'   those inputs or outputs, and declaring one would describe behaviour that
+#'   cannot run.
 #' @param license Character scalar, the SPDX identifier of the *weight* licence.
 #'
 #' @return A `zuk_capabilities` object.
@@ -102,13 +107,18 @@ new_zuk_capabilities <- function(architecture,
     )
   }
 
-  reserved <- list(
+  grouped <- list(
     multivariate = multivariate,
-    samples = samples,
     past_covariates = past_covariates,
-    future_covariates = future_covariates,
-    static_covariates = static_covariates,
-    fine_tunable = fine_tunable
+    future_covariates = future_covariates
+  )
+  reserved <- c(
+    grouped,
+    list(
+      samples = samples,
+      static_covariates = static_covariates,
+      fine_tunable = fine_tunable
+    )
   )
   # Checked as a list, not a vector: c() would coerce a stray numeric to a
   # common type, and isTRUE(1) is FALSE, so a non-logical declaration would slip
@@ -130,11 +140,15 @@ new_zuk_capabilities <- function(architecture,
       actual = reserved[malformed]
     )
   }
-  if (any(vapply(reserved, isTRUE, logical(1)))) {
-    enabled <- names(reserved)[vapply(reserved, isTRUE, logical(1))]
+  # Only the channels that genuinely have no implementation are refused here.
+  # The grouped-input flags are checked against the architecture's declared
+  # contract version instead, which new_zuk_model() knows and this does not.
+  never <- reserved[c("samples", "static_covariates", "fine_tunable")]
+  if (any(vapply(never, isTRUE, logical(1)))) {
+    enabled <- names(never)[vapply(never, isTRUE, logical(1))]
     zuk_abort_contract(
       c(
-        "Contract v1 has no execution channel for the declared capability.",
+        "No contract version has an execution channel for the declared capability.",
         "x" = "Disable: {.val {enabled}}."
       ),
       architecture = architecture,
@@ -151,10 +165,10 @@ new_zuk_capabilities <- function(architecture,
       max_horizon       = max_horizon,
       quantiles         = quantiles,
       quantile_levels   = quantile_levels,
-      multivariate      = FALSE,
+      multivariate      = isTRUE(multivariate),
       samples           = FALSE,
-      past_covariates   = FALSE,
-      future_covariates = FALSE,
+      past_covariates   = isTRUE(past_covariates),
+      future_covariates = isTRUE(future_covariates),
       static_covariates = FALSE,
       fine_tunable      = FALSE,
       license           = as.character(license)

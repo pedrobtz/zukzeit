@@ -15,4 +15,7 @@ this installation of zukzeit implements. Stamped onto every \code{\link[=new_zuk
 }
 \examples{
 zuk_contract_version()
+
+# Grouped inputs are available from 1.1.0 onwards.
+zuk_contract_version() >= package_version("1.1.0")
 }

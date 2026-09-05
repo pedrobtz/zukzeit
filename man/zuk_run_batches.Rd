@@ -10,7 +10,8 @@ zuk_run_batches(
   horizons,
   quantile_levels,
   batch_size = NULL,
-  device = NULL
+  device = NULL,
+  groups = NULL
 )
 }
 \arguments{
@@ -26,6 +27,12 @@ zuk_run_batches(
 \code{getOption("zuk.batch_size", 64L)}.}
 
 \item{device}{Device string; resolved via \code{\link[=zuk_resolve_device]{zuk_resolve_device()}}.}
+
+\item{groups}{Optional grouped-input record for architectures written
+against contract 1.1 or later: a list of \code{id}, \code{target}, and \code{future}, each
+with one entry per context. See \verb{?}\link{zuk-architecture-contract}. When
+supplied, one matrix is returned per \strong{target} row; when \code{NULL}, every row
+is a target and the result aligns to \code{contexts} as it always has.}
 }
 \value{
 A list of quantile matrices.

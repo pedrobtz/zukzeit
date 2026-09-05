@@ -67,6 +67,38 @@ When both are present they must agree: the batch path is an optimisation,
 never a different model.
 }
 
+\section{Grouped inputs (contract 1.1)}{
+
+An architecture written against contract \verb{1.1.0} or later receives a fifth
+argument:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{predict_batch_fn(contexts, horizons, quantile_levels, device, groups)
+}\if{html}{\out{</div>}}
+
+Every series is a row of \code{contexts}. \code{groups} says what those rows mean, with
+one entry per row:
+\itemize{
+\item \code{id} --- task membership. Rows sharing an id exchange information; rows in
+different tasks do not. Values are labels, not indices.
+\item \code{target} --- logical; whether the row is forecast and returned.
+\item \code{future} --- known future values for the row, or \code{NULL}. When present it is
+exactly as long as that row's horizon.
+}
+
+Those two fields express all three row kinds without a separate vocabulary:
+a \strong{target} has no future, a \strong{past-only covariate} is a non-target with no
+future, and a \strong{future-known covariate} is a non-target with future values.
+
+\code{\link[=zuk_run_batches]{zuk_run_batches()}} returns one matrix per \strong{target} row, in the order those
+rows appear. Rows of one task are never split across batches, because a task
+is attended together.
+
+The engine dispatches on the version an architecture declares: a \verb{1.0.0}
+architecture is called with four arguments and \emph{cannot} receive \code{groups}, so
+it can neither break on one nor silently ignore one. \code{predict_fn} is
+unchanged in both versions and remains the single-series fallback.
+}
+
 \section{Invariants}{
 
 These hold for every architecture and are what \code{\link[=zuk_check_architecture]{zuk_check_architecture()}}
@@ -79,6 +111,9 @@ returning.
 \item \strong{Finiteness.} No \code{NA}, \code{NaN}, or \code{Inf} for a finite, non-empty context.
 \item \strong{Context limit.} The model never requires more history than the
 \code{max_context} it declares in its \code{\link[=new_zuk_capabilities]{new_zuk_capabilities()}}.
+\item \strong{Return alignment.} One matrix per target row. Without \code{groups} every row
+is a target, so the result aligns to \code{contexts} --- the rule generalises
+rather than changes.
 \item \strong{Empty context.} An empty context raises an error rather than returning
 \code{NA} — silent nonsense is worse than a stop.
 \item \strong{Batch agreement.} If \code{predict_batch_fn} is supplied, it matches
@@ -90,9 +125,12 @@ returning.
 
 Capabilities are declarations the engine enforces \emph{before} inference, so an
 unsupported request costs nothing. Declaring a capability the forward pass
-does not honour is a bug in the architecture. Contract v1 has channels only
-for univariate numeric context and predictive quantiles: multivariate,
-covariate, sample-path, and fine-tuning declarations must remain \code{FALSE}.
+does not honour is a bug in the architecture. Contract 1.0 has channels
+only for univariate numeric context and predictive quantiles. Contract 1.1
+adds grouped targets and covariates, declarable only by an architecture at
+\verb{1.1.0} or later and only for what its fixtures demonstrate. Sample-path and
+fine-tuning declarations must remain \code{FALSE} at every version, because no
+channel exists for them.
 Native-quantile checkpoints declare their exact trained levels when those
 levels are fixed, and the engine validates them together with horizon and
 context limits before calling the architecture. See

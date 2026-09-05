@@ -25,8 +25,11 @@
 #'   to looping `predict_fn`. Native torch architectures supply this; the stub
 #'   does not.
 #' @param contract_version The architecture-contract version this model was
-#'   written against; see `?`[zuk-architecture-contract]. Defaults to the
-#'   version this installation implements.
+#'   written against; see `?`[zuk-architecture-contract]. Defaults to `1.0.0`,
+#'   the univariate contract every architecture implements. It is a claim about
+#'   the *architecture*, not about the engine, and the engine cannot verify it
+#'   --- so it does not default to the newest version. Declare `1.1.0` or later
+#'   only once the forward pass actually accepts a `groups` argument.
 #' @return A `zuk_model` object.
 #' @seealso `?`[zuk-architecture-contract] for the full specification, and
 #'   [zuk_check_architecture()] to verify an implementation against it.
@@ -55,7 +58,7 @@ new_zuk_model <- function(architecture,
                            device = config$device %||% "cpu",
                            params = NULL,
                            predict_batch_fn = NULL,
-                           contract_version = zuk_contract_version()) {
+                           contract_version = "1.0.0") {
   if (!inherits(capabilities, "zuk_capabilities")) {
     zuk_abort_contract(
       "{.arg capabilities} must be a {.cls zuk_capabilities} object.",
@@ -86,6 +89,26 @@ new_zuk_model <- function(architecture,
       actual = class(predict_batch_fn)
     )
   }
+  contract_version <- package_version(contract_version)
+  # A capability is a promise the forward pass can keep. An architecture
+  # written against 1.0 has no channel through which grouped inputs could
+  # arrive, so declaring one would advertise behaviour that cannot run.
+  grouped <- c("multivariate", "past_covariates", "future_covariates")
+  declared <- grouped[vapply(grouped, function(f) isTRUE(capabilities[[f]]), logical(1))]
+  if (length(declared) && contract_version < package_version("1.1.0")) {
+    zuk_abort_contract(
+      c(
+        "Grouped-input capabilities require contract 1.1.0 or later.",
+        "x" = "Declared: {.val {declared}}.",
+        "i" = "This architecture targets contract {format(contract_version)}."
+      ),
+      architecture = architecture,
+      model_id = model_id,
+      contract = "capability declaration",
+      expected = "contract_version >= 1.1.0",
+      actual = format(contract_version)
+    )
+  }
   structure(
     list(
       architecture     = as.character(architecture),
@@ -97,7 +120,7 @@ new_zuk_model <- function(architecture,
       revision         = as.character(revision),
       device           = as.character(device),
       params           = params,
-      contract_version = package_version(contract_version)
+      contract_version = contract_version
     ),
     class = "zuk_model"
   )

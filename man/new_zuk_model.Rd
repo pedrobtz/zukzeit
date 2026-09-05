@@ -14,7 +14,7 @@ new_zuk_model(
   device = config$device \%||\% "cpu",
   params = NULL,
   predict_batch_fn = NULL,
-  contract_version = zuk_contract_version()
+  contract_version = "1.0.0"
 )
 }
 \arguments{
@@ -45,8 +45,11 @@ to looping \code{predict_fn}. Native torch architectures supply this; the stub
 does not.}
 
 \item{contract_version}{The architecture-contract version this model was
-written against; see \verb{?}\link{zuk-architecture-contract}. Defaults to the
-version this installation implements.}
+written against; see \verb{?}\link{zuk-architecture-contract}. Defaults to \verb{1.0.0},
+the univariate contract every architecture implements. It is a claim about
+the \emph{architecture}, not about the engine, and the engine cannot verify it
+--- so it does not default to the newest version. Declare \verb{1.1.0} or later
+only once the forward pass actually accepts a \code{groups} argument.}
 }
 \value{
 A \code{zuk_model} object.

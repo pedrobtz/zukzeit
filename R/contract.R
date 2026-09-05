@@ -63,6 +63,36 @@
 #' When both are present they must agree: the batch path is an optimisation,
 #' never a different model.
 #'
+#' @section Grouped inputs (contract 1.1):
+#' An architecture written against contract `1.1.0` or later receives a fifth
+#' argument:
+#'
+#' ```
+#' predict_batch_fn(contexts, horizons, quantile_levels, device, groups)
+#' ```
+#'
+#' Every series is a row of `contexts`. `groups` says what those rows mean, with
+#' one entry per row:
+#'
+#' * `id` --- task membership. Rows sharing an id exchange information; rows in
+#'   different tasks do not. Values are labels, not indices.
+#' * `target` --- logical; whether the row is forecast and returned.
+#' * `future` --- known future values for the row, or `NULL`. When present it is
+#'   exactly as long as that row's horizon.
+#'
+#' Those two fields express all three row kinds without a separate vocabulary:
+#' a **target** has no future, a **past-only covariate** is a non-target with no
+#' future, and a **future-known covariate** is a non-target with future values.
+#'
+#' [zuk_run_batches()] returns one matrix per **target** row, in the order those
+#' rows appear. Rows of one task are never split across batches, because a task
+#' is attended together.
+#'
+#' The engine dispatches on the version an architecture declares: a `1.0.0`
+#' architecture is called with four arguments and *cannot* receive `groups`, so
+#' it can neither break on one nor silently ignore one. `predict_fn` is
+#' unchanged in both versions and remains the single-series fallback.
+#'
 #' @section Invariants:
 #' These hold for every architecture and are what [zuk_check_architecture()]
 #' asserts:
@@ -74,6 +104,9 @@
 #' * **Finiteness.** No `NA`, `NaN`, or `Inf` for a finite, non-empty context.
 #' * **Context limit.** The model never requires more history than the
 #'   `max_context` it declares in its [new_zuk_capabilities()].
+#' * **Return alignment.** One matrix per target row. Without `groups` every row
+#'   is a target, so the result aligns to `contexts` --- the rule generalises
+#'   rather than changes.
 #' * **Empty context.** An empty context raises an error rather than returning
 #'   `NA` — silent nonsense is worse than a stop.
 #' * **Batch agreement.** If `predict_batch_fn` is supplied, it matches
@@ -82,9 +115,12 @@
 #' @section Capabilities:
 #' Capabilities are declarations the engine enforces *before* inference, so an
 #' unsupported request costs nothing. Declaring a capability the forward pass
-#' does not honour is a bug in the architecture. Contract v1 has channels only
-#' for univariate numeric context and predictive quantiles: multivariate,
-#' covariate, sample-path, and fine-tuning declarations must remain `FALSE`.
+#' does not honour is a bug in the architecture. Contract 1.0 has channels
+#' only for univariate numeric context and predictive quantiles. Contract 1.1
+#' adds grouped targets and covariates, declarable only by an architecture at
+#' `1.1.0` or later and only for what its fixtures demonstrate. Sample-path and
+#' fine-tuning declarations must remain `FALSE` at every version, because no
+#' channel exists for them.
 #' Native-quantile checkpoints declare their exact trained levels when those
 #' levels are fixed, and the engine validates them together with horizon and
 #' context limits before calling the architecture. See
@@ -111,6 +147,21 @@ NULL
 #' @export
 #' @examples
 #' zuk_contract_version()
+#'
+#' # Grouped inputs are available from 1.1.0 onwards.
+#' zuk_contract_version() >= package_version("1.1.0")
 zuk_contract_version <- function() {
-  package_version("1.0.0")
+  # 1.1.0, not 2.0.0. The grouped-input extension is purely additive: an
+  # architecture written against 1.0 keeps its four-argument forward pass, is
+  # never handed a `groups` record, and its return alignment is unchanged.
+  # Semantic versioning makes that a minor bump, and the section above promises
+  # the major component moves only for a breaking change. The roadmap calls the
+  # feature "contract v2"; that is its name, not its version.
+  package_version("1.1.0")
+}
+
+# Whether an architecture was written against the grouped-input extension.
+zuk_supports_groups <- function(model) {
+  !is.null(model$contract_version) &&
+    package_version(model$contract_version) >= package_version("1.1.0")
 }
