@@ -1,4 +1,6 @@
-utils::globalVariables(c("object", "new_data"))
+# `self` is bound by fabletools when it evaluates a model definition's
+# specials, so it is legitimate at run time but invisible to static analysis.
+utils::globalVariables(c("object", "new_data", "self"))
 
 .onLoad <- function(libname, pkgname) {
   # Register constructors for the package-owned catalogue. Constructor

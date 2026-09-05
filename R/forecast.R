@@ -19,7 +19,8 @@
 zuk_infer <- function(model, histories, future_index, quantile_levels,
                        key_name = "key", index_name = "index",
                        target = ".response",
-                       batch_size = NULL, device = NULL) {
+                       batch_size = NULL, device = NULL,
+                       covariates = NULL, tasks = NULL) {
   quantile_levels <- check_quantile_levels(
     model$capabilities,
     quantile_levels,
@@ -49,8 +50,31 @@ zuk_infer <- function(model, histories, future_index, quantile_levels,
   }
   horizons <- vapply(keys, function(k) length(future_index[[k]]), integer(1))
 
-  qmats <- zuk_run_batches(model, histories[keys], horizons, levels,
-                            batch_size = batch_size, device = device)
+  if (is.null(covariates) && is.null(tasks)) {
+    qmats <- zuk_run_batches(model, histories[keys], horizons, levels,
+                             batch_size = batch_size, device = device)
+  } else {
+    # One target row per key, each followed by its covariate rows in the same
+    # task. The engine answers for target rows only, in this same order.
+    rows <- list(); ids <- character(); is_target <- logical()
+    ahead <- list(); row_horizons <- integer()
+    for (key in keys) {
+      task <- if (is.null(tasks)) key else tasks[[key]]
+      rows <- c(rows, list(histories[[key]])); ids <- c(ids, task)
+      is_target <- c(is_target, TRUE); ahead <- c(ahead, list(NULL))
+      row_horizons <- c(row_horizons, horizons[[key]])
+      for (covariate in covariates[[key]]) {
+        rows <- c(rows, list(covariate$values)); ids <- c(ids, task)
+        is_target <- c(is_target, FALSE); ahead <- c(ahead, list(covariate$future))
+        row_horizons <- c(row_horizons, horizons[[key]])
+      }
+    }
+    qmats <- zuk_run_batches(
+      model, rows, row_horizons, levels,
+      batch_size = batch_size, device = device,
+      groups = list(id = ids, target = is_target, future = ahead)
+    )
+  }
 
   key_out <- vector("list", length(keys))
   idx_out <- vector("list", length(keys))
@@ -126,6 +150,114 @@ build_distribution <- function(qmatrix, levels) {
   values <- lapply(seq_len(n), function(i) as.numeric(qmatrix[i, ]))
   pcts <- rep(list(as.numeric(levels) * 100), n)
   distributional::dist_percentile(values, pcts)
+}
+
+# ---- grouped panel requests --------------------------------------------------
+
+# Resolve the task each key belongs to. `group = NULL` keeps today's behaviour:
+# one task per key, so a forecast depends on its own series and the model, not
+# on what else happened to be in the call. Naming a column opts in to
+# cross-series learning by letting several keys share a task.
+panel_tasks <- function(spec, keys, group, call = rlang::caller_env()) {
+  if (is.null(group)) {
+    return(stats::setNames(as.character(keys), keys))
+  }
+  if (length(group) != 1L || !is.character(group) || !group %in% names(spec$data)) {
+    zuk_abort_capability(
+      "{.arg group} must name one column of {.arg new_data}.",
+      capability = "input_columns", requested = group,
+      supported = names(spec$data), call = call
+    )
+  }
+  by_key <- split(spec$data[[group]], spec$data[[spec$key]], drop = TRUE)
+  mixed <- names(by_key)[vapply(by_key, function(g) length(unique(g)) > 1L, logical(1))]
+  if (length(mixed)) {
+    zuk_abort_capability(
+      c(
+        "{.arg group} must be constant within a series.",
+        "x" = "Varies within {.val {mixed}}."
+      ),
+      capability = "input_columns", requested = group,
+      supported = "one task label per series", call = call
+    )
+  }
+  vapply(keys, function(k) as.character(by_key[[k]][[1]]), character(1))
+}
+
+# Assemble the covariate rows that ride alongside each target series. A
+# covariate present in `future` is future-known; one absent is past-only. That
+# is inferred rather than declared, which is one fewer argument than naming both
+# sets and cannot disagree with itself.
+panel_covariates <- function(spec, keys, covariates, future, horizons,
+                             call = rlang::caller_env()) {
+  if (is.null(covariates)) return(NULL)
+  covariates <- as.character(covariates)
+  reserved <- c(spec$index, spec$key, spec$target)
+  unknown <- setdiff(covariates, setdiff(names(spec$data), reserved))
+  if (length(unknown)) {
+    zuk_abort_capability(
+      c(
+        "{.arg covariates} must name columns of {.arg new_data}.",
+        "x" = "Not available as covariates: {.val {unknown}}."
+      ),
+      capability = "input_columns", requested = unknown,
+      supported = setdiff(names(spec$data), reserved), call = call
+    )
+  }
+  observed <- lapply(covariates, function(column) {
+    split(spec$data[[column]], spec$data[[spec$key]], drop = TRUE)
+  })
+  names(observed) <- covariates
+
+  known <- character()
+  if (!is.null(future)) {
+    if (!inherits(future, "data.frame")) {
+      zuk_abort_capability(
+        "{.arg future} must be a data frame of future covariate values.",
+        capability = "input_data", requested = class(future),
+        supported = "data.frame", call = call
+      )
+    }
+    future <- as.data.frame(future)
+    known <- intersect(covariates, names(future))
+    if (!length(known)) {
+      zuk_abort_capability(
+        c(
+          "{.arg future} contains none of the named covariates.",
+          "i" = "Drop it, or supply future values for at least one covariate."
+        ),
+        capability = "input_columns", requested = names(future),
+        supported = covariates, call = call
+      )
+    }
+    if (spec$key %in% names(future)) {
+      future[[spec$key]] <- as.character(future[[spec$key]])
+    } else {
+      future[[spec$key]] <- as.character(keys[[1]])
+    }
+  }
+
+  lapply(keys, function(key) {
+    rows <- if (is.null(future)) NULL else future[future[[spec$key]] == key, , drop = FALSE]
+    lapply(covariates, function(column) {
+      ahead <- NULL
+      if (column %in% known) {
+        ahead <- as.numeric(rows[[column]])
+        if (length(ahead) != horizons[[key]]) {
+          zuk_abort_capability(
+            c(
+              "Future values must cover the whole horizon.",
+              "x" = "{.val {column}} has {length(ahead)} row{?s} for series {.val {key}}; {horizons[[key]]} needed."
+            ),
+            capability = "future_covariates", requested = length(ahead),
+            supported = horizons[[key]], call = call
+          )
+        }
+      }
+      list(values = as.numeric(observed[[column]][[key]]), future = ahead)
+    })
+  }) -> per_key
+  stats::setNames(per_key, keys)
 }
 
 # ---- forecast object --------------------------------------------------------
@@ -306,6 +438,16 @@ generics::forecast
 #' @param quantile_levels Numeric vector of quantile levels in `(0, 1)`.
 #' @param index,key,target Column names; required for the `data.frame` method,
 #'   inferred for a `tsibble`.
+#' @param covariates Character vector naming columns of `new_data` to condition
+#'   on. Named rather than inferred from the leftover columns, because an
+#'   unspecified `target` is itself inferred from those. A covariate that also
+#'   appears in `future` is future-known; one that does not is past-only.
+#' @param future Data frame of future covariate values, carrying the `key`
+#'   column and one column per future-known covariate, with `h` rows per series.
+#' @param group Optional column of `new_data` naming the task a series belongs
+#'   to. `NULL` gives one task per series, which is the existing behaviour and
+#'   keeps a forecast a function of its own series. Naming a column opts in to
+#'   cross-series learning, where series sharing a task inform one another.
 #' @param batch_size,device Passed to [zuk_run_batches()].
 #' @param ... Unused.
 #' @return A `zuk_forecast`.
@@ -332,6 +474,7 @@ generics::forecast
 forecast.zuk_model <- function(object, new_data, h = 1L,
                                 quantile_levels = c(0.1, 0.5, 0.9),
                                 index = NULL, key = NULL, target = NULL,
+                                covariates = NULL, future = NULL, group = NULL,
                                 batch_size = NULL, device = NULL, ...) {
   check_horizon(
     object$capabilities,
@@ -344,6 +487,11 @@ forecast.zuk_model <- function(object, new_data, h = 1L,
 
   histories <- split(spec$data[[spec$target]], spec$data[[spec$key]], drop = TRUE)
   future_index <- future_index_for(spec, h)
+  keys <- names(histories)
+  horizons <- stats::setNames(rep(h, length(keys)), keys)
+
+  tasks <- if (is.null(group)) NULL else panel_tasks(spec, keys, group)
+  covariate_rows <- panel_covariates(spec, keys, covariates, future, horizons)
 
   zuk_infer(
     object,
@@ -354,7 +502,9 @@ forecast.zuk_model <- function(object, new_data, h = 1L,
     index_name = spec$index,
     target = spec$target,
     batch_size = batch_size,
-    device = device
+    device = device,
+    covariates = covariate_rows,
+    tasks = tasks
   )
 }
 

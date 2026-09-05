@@ -433,6 +433,13 @@ zuk_run_batches <- function(model, contexts, horizons, quantile_levels,
 
   if (!is.null(groups)) {
     groups <- validate_groups(groups, contexts, horizons, model)
+  } else if (zuk_supports_groups(model)) {
+    # A contract-1.1 architecture always receives a `groups` record, so it has
+    # one signature rather than two. An ungrouped request is the degenerate
+    # case: every row its own task, every row a target.
+    groups <- list(id = as.character(seq_len(n)),
+                   target = rep(TRUE, n),
+                   future = vector("list", n))
   }
 
   if (is.function(model$predict_batch_fn)) {

@@ -48,6 +48,7 @@ Suggests:
     tsibble,
     tsibbledata,
     tune,
+    withr,
     workflows,
     yardstick
 VignetteBuilder: knitr

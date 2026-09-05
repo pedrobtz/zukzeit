@@ -29,7 +29,30 @@ zuk_fable_model_class <- function() {
   cls <- fabletools::new_model_class(
     "TSFM",
     train = train_tsfm,
-    specials = fabletools::new_specials()
+    # `xreg()` keeps fable's meaning exactly: a regressor whose future values
+    # the caller supplies. fabletools re-evaluates specials against `new_data`
+    # at forecast time, so those values arrive without plumbing of our own.
+    # `past_xreg()` has no tidyverts precedent --- no fable model distinguishes
+    # the two kinds --- so it is named unlike anything fable defines.
+    specials = fabletools::new_specials(
+      # `.named = TRUE` deparses each bare argument into a name, so a regressor
+      # can be matched between fit and forecast time. Without it the values
+      # arrive correctly but anonymously, and nothing can be paired up.
+      xreg = function(...) {
+        lapply(rlang::enexprs(..., .named = TRUE), rlang::eval_tidy,
+               data = self$data)
+      },
+      past_xreg = function(...) {
+        # fabletools re-evaluates every special against `new_data` at forecast
+        # time, and a past-only regressor is by definition absent there. Not
+        # finding it is the expected case, not a failure.
+        lapply(rlang::enexprs(..., .named = TRUE), function(expression) {
+          tryCatch(rlang::eval_tidy(expression, data = self$data),
+                   error = function(e) NULL)
+        })
+      },
+      .required_specials = NULL
+    )
   )
   .zuk_fable_class$class <- cls
   cls
@@ -85,7 +108,8 @@ train_tsfm <- function(.data, specials, model_id, revision = NULL,
       history         = as.numeric(y),
       response        = response,
       index           = tsibble::index_var(.data),
-      quantile_levels = levels
+      quantile_levels = levels,
+      covariates      = fable_covariates(specials, model)
     ),
     class = "model_tsfm"
   )
@@ -187,13 +211,75 @@ forecast.model_tsfm <- function(object, new_data, specials = NULL, ...) {
       object$quantile_levels
     ))
   }
+  # fabletools has already re-evaluated the model's right-hand side against
+  # `new_data`, so `specials$xreg` holds the *future* values of each regressor.
+  request <- fable_request(object, fable_covariates(specials, object$model), h)
   qmat <- zuk_run_batches(
     object$model,
-    list(object$history),
-    h,
-    object$quantile_levels
+    request$contexts,
+    request$horizons,
+    object$quantile_levels,
+    groups = request$groups
   )[[1]]
   build_distribution(qmat, object$quantile_levels)
+}
+
+# Flatten the two specials into named numeric series, refusing them at the
+# boundary when the checkpoint cannot condition on covariates at all.
+fable_covariates <- function(specials, model) {
+  flatten <- function(name) {
+    values <- unlist(specials[[name]] %||% list(), recursive = FALSE)
+    if (!length(values)) return(NULL)
+    stats::setNames(lapply(values, as.numeric), names(values))
+  }
+  known <- flatten("xreg")
+  past <- flatten("past_xreg")
+  if (is.null(known) && is.null(past)) return(NULL)
+  caps <- model$capabilities
+  if (!is.null(known) && !isTRUE(caps$future_covariates)) {
+    zuk_abort_capability(
+      "This checkpoint does not accept future-known regressors.",
+      model_id = model$model_id, revision = model$revision,
+      capability = "future_covariates", requested = names(known), supported = FALSE
+    )
+  }
+  if (!is.null(past) && !isTRUE(caps$past_covariates)) {
+    zuk_abort_capability(
+      "This checkpoint does not accept past-only regressors.",
+      model_id = model$model_id, revision = model$revision,
+      capability = "past_covariates", requested = names(past), supported = FALSE
+    )
+  }
+  list(known = known, past = past)
+}
+
+# One task: the response, then its regressors. fabletools evaluates a single key
+# at a time, so this task never spans series --- covariates are available
+# through this route, cross-series learning is not.
+fable_request <- function(object, ahead, h) {
+  # The *fitted* model decides which rows exist; `ahead` only fills in the
+  # future values of those that have any.
+  fitted <- object$covariates
+  if (is.null(fitted)) {
+    return(list(contexts = list(object$history), horizons = h, groups = NULL))
+  }
+  contexts <- list(object$history)
+  futures <- list(NULL)
+  for (name in names(fitted$known)) {
+    contexts <- c(contexts, list(fitted$known[[name]]))
+    futures <- c(futures, list(ahead$known[[name]]))
+  }
+  for (name in names(fitted$past)) {
+    contexts <- c(contexts, list(fitted$past[[name]]))
+    futures <- c(futures, list(NULL))
+  }
+  n <- length(contexts)
+  list(
+    contexts = contexts,
+    horizons = rep(as.integer(h), n),
+    groups = list(id = rep("1", n), target = c(TRUE, rep(FALSE, n - 1L)),
+                  future = futures)
+  )
 }
 
 # A zero-shot model is never fitted in sample, so there are no fitted values or

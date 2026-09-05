@@ -12,6 +12,9 @@
   index = NULL,
   key = NULL,
   target = NULL,
+  covariates = NULL,
+  future = NULL,
+  group = NULL,
   batch_size = NULL,
   device = NULL,
   ...
@@ -28,6 +31,19 @@
 
 \item{index, key, target}{Column names; required for the \code{data.frame} method,
 inferred for a \code{tsibble}.}
+
+\item{covariates}{Character vector naming columns of \code{new_data} to condition
+on. Named rather than inferred from the leftover columns, because an
+unspecified \code{target} is itself inferred from those. A covariate that also
+appears in \code{future} is future-known; one that does not is past-only.}
+
+\item{future}{Data frame of future covariate values, carrying the \code{key}
+column and one column per future-known covariate, with \code{h} rows per series.}
+
+\item{group}{Optional column of \code{new_data} naming the task a series belongs
+to. \code{NULL} gives one task per series, which is the existing behaviour and
+keeps a forecast a function of its own series. Naming a column opts in to
+cross-series learning, where series sharing a task inform one another.}
 
 \item{batch_size, device}{Passed to \code{\link[=zuk_run_batches]{zuk_run_batches()}}.}
 
