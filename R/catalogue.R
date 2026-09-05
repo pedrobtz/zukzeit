@@ -22,6 +22,21 @@ zuk_catalogue_records <- function() {
       manifest = c("config.json", "model.safetensors")
     ),
     list(
+      model_id = "amazon/chronos-2",
+      architecture = "chronos2",
+      revision = "29ec3766d36d6f73f0696f85560a422f50e8498c",
+      state = "supported",
+      max_context = 8192L,
+      quantile_levels = c(0.01, seq(0.05, 0.95, by = 0.05), 0.99),
+      multivariate = TRUE,
+      past_covariates = TRUE,
+      future_covariates = TRUE,
+      n_params = 119477664,
+      size_bytes = 477930472,
+      license = "Apache-2.0",
+      manifest = c("config.json", "model.safetensors")
+    ),
+    list(
       model_id = "Datadog/Toto-2.0-4m",
       architecture = "toto2",
       revision = "8306a9801cf98c0f5ffe4b2dcc8f496e616d84d9",

@@ -5,10 +5,11 @@ test_that("the safe catalogue default only returns supported checkpoints", {
   supported <- zuk_models()
   all <- zuk_models(state = NULL)
 
-  expect_identical(nrow(supported), 2L)
+  expect_identical(nrow(supported), 3L)
   expect_setequal(
     supported$model_id,
-    c("google/timesfm-2.5-200m-pytorch", "Datadog/Toto-2.0-4m")
+    c("google/timesfm-2.5-200m-pytorch", "Datadog/Toto-2.0-4m",
+      "amazon/chronos-2")
   )
   expect_identical(
     supported$max_context[supported$architecture == "timesfm"], 16256L
@@ -16,13 +17,19 @@ test_that("the safe catalogue default only returns supported checkpoints", {
   expect_identical(
     supported$max_context[supported$architecture == "toto2"], 4096L
   )
-  expect_identical(nrow(all), 3L)
+  expect_identical(nrow(all), 4L)
   expect_setequal(unique(all$state), c("supported", "scaffold"))
   expect_true(all(grepl("^[0-9a-f]{40}$", all$revision)))
   expect_true(is.list(all$quantile_levels))
-  expect_false(any(all$multivariate))
-  expect_false(any(all$past_covariates))
-  expect_false(any(all$future_covariates))
+  # The grouped-input channels are per-checkpoint, not per-package: only the
+  # contract-1.1 architecture declares them, and every other row stays FALSE.
+  grouped <- all$model_id == "amazon/chronos-2"
+  expect_true(all(all$multivariate[grouped]))
+  expect_true(all(all$past_covariates[grouped]))
+  expect_true(all(all$future_covariates[grouped]))
+  expect_false(any(all$multivariate[!grouped]))
+  expect_false(any(all$past_covariates[!grouped]))
+  expect_false(any(all$future_covariates[!grouped]))
   expect_setequal(
     names(all),
     c(

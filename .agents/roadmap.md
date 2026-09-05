@@ -17,11 +17,11 @@ after it.
 
 ## Current status
 
-The engine runs the pinned TimesFM 2.5 and Toto 2.0 4M checkpoints natively,
-both passing their architecture-conformance and numerical-parity gates. This is
-not yet a `0.1.0` release candidate: the release scope also requires Chronos-2,
-which is blocked on the contract-v2 extension. Stage 5 is closed; Stage 6
-remains open.
+The engine runs the pinned TimesFM 2.5, Toto 2.0 4M, and Chronos-2 checkpoints
+natively, each passing its architecture-conformance and numerical-parity gates.
+All three release models are implemented and the grouped-input contract that
+Chronos-2 needs is shipped. Stages 5 and 6 are closed; Stage 7, release
+hardening, remains.
 
 | Architecture | Current state | `0.1.0` role |
 |---|---|---|
@@ -29,7 +29,7 @@ remains open.
 | `ttm` | Registered scaffold; forward pass aborts | Deferred: the selected TTM-R2 checkpoint is point-forecasting, not native-quantile |
 | `timesfm` | Native R `torch`; conformance and pinned CPU parity pass | **Implemented `0.1.0` general quantile model** |
 | `toto2` | Native R `torch`; conformance and pinned CPU parity pass | **Implemented `0.1.0` efficient probabilistic model** |
-| `chronos2` | Old Brulee adapter removed; no native implementation yet | **Required `0.1.0` multivariate/covariate model** |
+| `chronos2` | Native R `torch`; conformance and pinned CPU parity pass | **Implemented `0.1.0` multivariate/covariate model** |
 
 The repository already contains useful foundations:
 
@@ -46,10 +46,6 @@ The repository already contains useful foundations:
 The important remaining `0.1.0` gaps are:
 
 - TTM has no weight map, module, or forward pass and remains outside `0.1.0`;
-- the current contract cannot carry covariates or multivariate targets;
-  contract v2 must add them without breaking contract-v1 consumers;
-- Chronos-2 needs a native module, contract-v2 execution path, checkpoint map,
-  fixtures, conformance, and numerical-parity certification;
 - release hardening must be repeated after both architectures land.
 
 These gaps determine the stages below.

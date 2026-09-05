@@ -251,6 +251,16 @@ Chronos-2 port remain required before `0.1.0` is released.
   that path will not agree; `max_horizon` is 768, the largest horizon one
   decode block covers, and longer requests are refused rather than silently
   decoded through a path this port does not implement.
+* **Chronos-2** has a native R `torch` port: an encoder-only T5 whose every
+  block pairs attention over time with attention across the series of a task,
+  with split-half rotary position, unscaled T5 attention, whole-series
+  `arcsinh` scaling, a register token, and a 21-level quantile head from 0.01
+  to 0.99. It is the first architecture written against contract 1.1, so the
+  first that accepts multivariate targets and past or future-known covariates
+  --- all one mechanism, since every series is a row and a group id ties rows
+  into a task. Forecasts match the pinned reference to within 3e-07 relative on
+  the real checkpoint, across seven committed fixtures including a
+  covariate-informed task and an independent two-series batch.
 * **Stub** remains an executable random-walk test fixture, not a foundation
   model.
 * **TTM** remains a registered scaffold deferred until the engine represents

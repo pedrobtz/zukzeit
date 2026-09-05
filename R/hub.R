@@ -50,9 +50,6 @@ zuk_pretrained <- function(model_id, revision = NULL, device = NULL,
       supported = c(TRUE, FALSE)
     )
   }
-  if (is_chronos2_id(model_id)) {
-    zuk_abort_chronos2(model_id, revision %||% "main")
-  }
   record <- if (is_stub_id(model_id)) NULL else {
     zuk_resolve_catalogue_entry(model_id, revision)
   }
@@ -133,28 +130,6 @@ is_stub_id <- function(model_id) {
   identical(model_id, "stub") || grepl("^stub([-/]|$)", model_id)
 }
 
-# Recognise Chronos-2 ids so the unsupported reference adapter fails before any
-# network or tensor work. Native support is deferred until contract v2 can
-# represent its multivariate and covariate inputs.
-is_chronos2_id <- function(model_id) {
-  grepl("chronos-?2", model_id, ignore.case = TRUE)
-}
-
-zuk_abort_chronos2 <- function(model_id, revision,
-                                call = rlang::caller_env()) {
-  zuk_abort_capability(c(
-    "Chronos-2 is not a supported model in zukzeit 0.1.0.",
-    "i" = "The former Brulee adapter is retained as unregistered reference work only.",
-    "i" = "Native support is planned after the multivariate/covariate contract extension."
-  ),
-  model_id = model_id,
-  revision = revision,
-  capability = "architecture",
-  requested = "chronos2",
-  supported = zuk_registry_archs(),
-  call = call)
-}
-
 # Return list(config = <parsed config, incl. `architecture`>, weights = <state
 # dict or NULL>). The stub branch is self-contained; the real branch is the
 # hfhub plumbing that Stage 1's native architectures build on.
@@ -171,10 +146,6 @@ zuk_resolve_config <- function(model_id, revision, paths = NULL, record = NULL,
       load_options = load_options
     )
     return(list(config = config, weights = NULL))
-  }
-
-  if (is_chronos2_id(model_id)) {
-    zuk_abort_chronos2(model_id, revision, call)
   }
 
   record <- record %||% zuk_resolve_catalogue_entry(model_id, revision, call)

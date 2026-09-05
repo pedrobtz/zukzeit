@@ -280,8 +280,19 @@ zuk_check_architecture <- function(constructor,
         return("Cannot compare: the predict_fn probe did not produce a valid forecast.")
       }
       device <- zuk_resolve_device(model$device %||% NULL)
-      batched <- model$predict_batch_fn(list(probe, probe), c(h, h),
-                                        quantile_levels, device = device)
+      # A contract-1.1 architecture always takes a `groups` record, so the
+      # harness supplies the degenerate one the engine would: every row its own
+      # task, every row a target.
+      batched <- if (zuk_supports_groups(model)) {
+        model$predict_batch_fn(
+          list(probe, probe), c(h, h), quantile_levels, device = device,
+          groups = list(id = c("1", "2"), target = c(TRUE, TRUE),
+                        future = list(NULL, NULL))
+        )
+      } else {
+        model$predict_batch_fn(list(probe, probe), c(h, h), quantile_levels,
+                               device = device)
+      }
       if (!is.list(batched) || length(batched) != 2L) {
         return(sprintf("Expected a list of 2 matrices; got %s of length %d.",
                        class(batched)[1], length(batched)))

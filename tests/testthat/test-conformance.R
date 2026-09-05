@@ -7,7 +7,11 @@
 conforming_arch <- function(max_context = 128L,
                             predict_fn = NULL,
                             predict_batch_fn = NULL,
-                            contract_version = zuk_contract_version()) {
+                            # 1.0.0, not zuk_contract_version(): that is the
+                            # *engine's* version, and this baseline's batch
+                            # function takes four arguments, so claiming 1.1
+                            # would advertise a signature it does not have.
+                            contract_version = "1.0.0") {
   predict_fn <- predict_fn %||% function(context, h, quantile_levels) {
     if (length(context) == 0L) stop("empty context")
     last <- context[length(context)]
@@ -176,9 +180,20 @@ test_that("error = TRUE aborts, error = FALSE reports every problem at once", {
   expect_gt(length(failures(report)), 1L)
 })
 
-test_that("new_zuk_model stamps the current contract version", {
-  model <- conforming_arch()(list(), NULL)
-  expect_identical(model$contract_version, zuk_contract_version())
+test_that("a handle stamps what the architecture claims, not what the engine implements", {
+  # The stamp is a claim about the architecture and the engine cannot verify
+  # it, so the default is the version every architecture implements rather than
+  # the newest one. Defaulting to the newest would make every existing
+  # architecture claim grouped-input support it has no signature for.
+  expect_identical(conforming_arch()(list(), NULL)$contract_version,
+                   package_version("1.0.0"))
+  expect_identical(
+    conforming_arch(contract_version = "1.1.0")(list(), NULL)$contract_version,
+    package_version("1.1.0")
+  )
+  # The engine implements the grouped extension, and it is a minor bump: a
+  # contract-1.0 architecture keeps working unchanged, so nothing broke.
+  expect_gte(zuk_contract_version(), package_version("1.1.0"))
   expect_identical(zuk_contract_version()$major, 1L)
 })
 

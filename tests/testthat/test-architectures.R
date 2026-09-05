@@ -1,6 +1,8 @@
 test_that("all built-in architectures are registered", {
-  expect_setequal(zuk_registry_archs(), c("stub", "ttm", "timesfm", "toto2"))
-  expect_false(zuk_registry_has("chronos2"))
+  expect_setequal(
+    zuk_registry_archs(),
+    c("stub", "ttm", "timesfm", "toto2", "chronos2")
+  )
 })
 
 test_that("architecture keys are normalised from Hub config conventions", {
@@ -18,16 +20,18 @@ test_that("architecture keys are normalised from Hub config conventions", {
   expect_identical(normalize_architecture(list(model_type = "PatchTST")), "patchtst")
 })
 
-test_that("Chronos-2 is rejected before network or adapter work", {
-  expect_true(is_chronos2_id("amazon/chronos-2"))
-  expect_true(is_chronos2_id("amazon/chronos2"))
-  expect_false(is_chronos2_id("google/timesfm-2.5-200m-pytorch"))
-
-  expect_error(
-    zuk_pretrained("amazon/chronos-2"),
-    "not a supported model in zukzeit 0.1.0",
-    fixed = TRUE
-  )
+test_that("Chronos-2 is a curated checkpoint rather than a special case", {
+  # It was rejected by id before the native port existed. Now it resolves like
+  # any other catalogue entry, and it is the only supported checkpoint that
+  # declares the grouped-input channels.
+  entry <- zuk_models()[zuk_models()$model_id == "amazon/chronos-2", ]
+  expect_identical(nrow(entry), 1L)
+  expect_identical(entry$architecture, "chronos2")
+  expect_true(entry$multivariate)
+  expect_true(entry$past_covariates)
+  expect_true(entry$future_covariates)
+  expect_length(entry$quantile_levels[[1]], 21L)
+  expect_true(zuk_registry_has("chronos2"))
 })
 
 test_that("TTM scaffold advertises capabilities but defers the forward pass", {
