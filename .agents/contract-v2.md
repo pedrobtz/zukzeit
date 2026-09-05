@@ -163,6 +163,64 @@ Adopt each ecosystem's own idiom rather than a single new vocabulary:
 - **tidymodels** --- recipe roles, which already express exactly this
   distinction with no new machinery.
 
+### Recommendations
+
+Each is checked against the machinery rather than proposed from the survey
+alone.
+
+**1. Plain R `forecast()` — adopt `nixtlar`'s shape, with covariates explicit.**
+
+```r
+forecast(model, new_data, h, quantile_levels, index, key, target,
+         covariates = NULL,   # column names to condition on
+         future     = NULL,   # frame of their future values (nixtlar's X_df)
+         group      = NULL,   # column defining the task
+         batch_size, device)
+```
+
+The one deviation from `nixtlar` is that covariates are **named rather than
+inferred from leftover columns**, and it is forced: `panel_spec()` already
+derives an unspecified `target` as the *first measured variable*, so treating
+extra columns as covariates would silently change which column gets forecast.
+`nixtlar` can infer because `target_col` is always named there.
+
+Past-only versus future-known is then inferred rather than declared: a covariate
+that appears in `future` is future-known, one that does not is past-only. That
+drops `nixtlar`'s `hist_exog_list` for one fewer argument at equal
+expressiveness.
+
+**2. `TSFM()` — the tidyverts machinery already carries this.**
+
+```r
+TSFM(y ~ xreg(promo) + past_xreg(traffic), model_id = "...")
+fabletools::forecast(fits, new_data = future)
+```
+
+`fabletools:::forecast.mdl_ts` re-parses the model's right-hand side against
+`new_data` and passes the result to the model's `forecast` method. Verified
+directly: a special declared on a model class returns the *training* values at
+fit time and the *`new_data`* values at forecast time. `forecast.model_tsfm()`
+already takes a `specials` argument and currently ignores it, so future-known
+covariates need a special declared and consumed, not new plumbing.
+
+`xreg()` keeps fable's exact meaning. `past_xreg()` is an extension with no
+tidyverts precedent, because no tidyverts model distinguishes the two kinds ---
+fable's `xreg` is always future-known. The name is deliberately unlike fable's
+so it does not read as something fable defines.
+
+This route gives covariates but **not** cross-key learning: `fabletools::model()`
+evaluates one key at a time. That limitation should be stated in `?TSFM`
+alongside the batching note already there.
+
+**3. tidymodels — mirror the plain-R arguments; do not adopt recipe roles yet.**
+
+Roles are the right long-term idiom and express this distinction exactly. But
+consuming them means re-introducing the recipe and blueprint machinery
+deliberately removed from `zuk_fit()`, which bought nothing when it was there.
+Passing `covariates` and `future` through `set_engine()` matches the plain-R
+route and adds no dependency. Recipe roles become worth it when a consumer
+actually drives `zukzeit` from a recipe.
+
 ### The gap: cross-learning across keys
 
 `fabletools::model()` evaluates one key at a time, and no tidyverts model
@@ -171,11 +229,24 @@ shares information between keys, so the tidyverts has no convention for it.
 cross-learning is implicit in what the caller chose to include.
 
 Cross-series learning is one of Chronos-2's headline capabilities, so it can
-only be expressed through the batched `forecast(model, panel, h)` route. The
-smallest convention that works is `nixtlar`'s --- the panel *is* the task ---
-with an optional column naming finer groups when one call should carry several
-independent tasks. This is the one place a convention has to be chosen rather
-than adopted.
+only be expressed through the batched `forecast(model, panel, h)` route.
+
+**4. Recommendation: `group = NULL` means one task per key; cross-learning is
+opt-in.**
+
+This reverses the earlier draft, which followed `nixtlar` in making the whole
+panel one task. That is safe for `nixtlar` because it is their only mode. It is
+not safe here, for two reasons:
+
+- The same panel would return different numbers depending on which model is
+  loaded, since a contract-1.0 model cannot cross-learn and a 1.1 one would.
+- Adding an unrelated series to a panel would change the forecasts of every
+  other series in it. Forecasts should be a function of the series and the
+  model, not of what else happened to be in the call.
+
+So `group = NULL` preserves exactly today's behaviour and is identical for
+contract-1.0 models, while `group = "region"` opts in to tasks spanning several
+keys. Opt-in costs one argument; the alternative costs reproducibility.
 
 ## Open decisions
 
@@ -189,3 +260,23 @@ than adopted.
 3. Whether contract v1 handles should report `contract_version` 1.0.0 forever
    or be re-stamped 2.0.0 once the engine implements v2. They should not: the
    version records what the *architecture* was written against.
+
+
+## Closing `consumer-api.md`
+
+The consumer contract documents five release gates, all written against the
+univariate surface. Grouped inputs belong there as a sixth, but it should be
+amended **after** the caller surface lands rather than now: R1--R5 describe what
+a consumer calls, and until `forecast()` accepts `covariates`, `future`, and
+`group`, an R6 would document an API that does not exist.
+
+What it will need to say, once it does:
+
+- which capability flags a consumer inspects to learn that a checkpoint accepts
+  covariates, and that they are per-checkpoint rather than per-package;
+- that grouped requests are refused before download or tensor work, with the
+  same typed conditions as every other capability failure;
+- that a contract-1.0 checkpoint remains callable exactly as today, so a
+  consumer written against the univariate surface needs no change;
+- that cross-key learning is opt-in, so a consumer that does not ask for it gets
+  reproducible per-series forecasts.
