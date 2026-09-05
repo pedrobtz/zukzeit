@@ -838,6 +838,53 @@ the roadmap rather than additional models that duplicate an existing slot.
 - integrate sample forecasts with plain R and optional adapters without making
   the quantile path depend on sample generation.
 
+### Testing infrastructure — parity without a checkpoint
+
+Not tied to a release, and deliberately not a `0.1.0` blocker: all three models
+already pass numerical parity, and the existing gates meet the Stage 7 exit
+criteria. This closes a coverage gap rather than a correctness one.
+
+**The gap.** Parity is only exercised where a checkpoint can be downloaded, so
+in practice one Linux job. Every other configuration — macOS, Windows, R-devel,
+oldrel — runs structural tests only: batch/loop agreement, determinism, monotone
+quantiles, masking. Those hold for any weights, which is what makes them
+portable and also what limits them. Every arithmetic bug found while porting
+Toto and Chronos-2 produced **correct shapes and wrong numbers**, and would have
+passed every structural test on every platform:
+
+- unit scaling rewriting the whole forward pass, invisible in the state dict;
+- interleaved versus split-half rotary, the two ports needing opposite
+  conventions;
+- T5's unscaled attention, wrong by a factor of 8 if the conventional
+  `1/sqrt(d_kv)` is assumed;
+- a per-dimension scale differing from another architecture's by one factor.
+
+**The proposal.** Generate reference outputs from *synthetic* weights rather
+than trained ones, and commit both the weights and the expected outputs. The
+existing synthetic helpers already build correctly-shaped models with random
+weights; this adds the missing half, which is a reference to compare against.
+
+Sketch:
+
+- extend each `generate-*-reference.py` with a synthetic mode that constructs
+  the reduced configuration, writes the weights as a small safetensors file,
+  and records the forward-pass outputs;
+- commit both under `tests/testthat/fixtures/<arch>/synthetic/`;
+- add a parity test that loads the committed weights and asserts agreement,
+  gated on `torch` alone rather than on `ZUK_RUN_CHECKPOINT_TEST`.
+
+**Cost.** The reduced TimesFM is 41,872 parameters, so about 170 KB committed.
+Toto cannot currently be reduced — `toto_constructor()` validates every
+dimension against the pinned configuration — so it would either need a
+module-level fixture that bypasses the constructor, or a relaxation of that
+check for a documented test configuration. That choice is the main design
+question and should be settled before any code is written.
+
+**What it buys.** Full-graph numerical parity on every platform in CI, with no
+download, catching exactly the class of bug the structural tests cannot see. It
+strengthens the first control in the risk table below, which currently depends
+entirely on checkpoint-backed fixtures.
+
 ### Later releases
 
 - reconsider TTM only if point-only demand justifies a separate output contract;
@@ -852,7 +899,7 @@ the roadmap rather than additional models that duplicate an existing slot.
 
 | Risk | Control |
 |---|---|
-| Port appears plausible but computes the wrong model | Generate fixtures first; require independent parity and conformance gates |
+| Port appears plausible but computes the wrong model | Generate fixtures first; require independent parity and conformance gates. Note this control currently reaches only the one CI configuration that can download a checkpoint; see *Testing infrastructure* above |
 | Checkpoint/config changes upstream | Support immutable SHAs and reject unknown variants explicitly |
 | Capability metadata outruns implementation | Test every `TRUE` capability through the public contract |
 | R `torch` operator, memory, or dtype gap | Require a TimesFM vertical spike before fixture and full-port work |
