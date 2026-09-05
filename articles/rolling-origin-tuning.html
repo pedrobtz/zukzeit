@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tuning context length with rolling-origin resampling • tsfm</title>
+<title>Tuning context length with rolling-origin resampling • zukzeit</title>
 <!-- jquery --><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script><!-- Bootstrap --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha256-bZLfwXAP04zRMK2BjiO8iu9pf4FbLqX6zitd+tIvLhE=" crossorigin="anonymous">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script><!-- bootstrap-toc --><link rel="stylesheet" href="../bootstrap-toc.css">
 <script src="../bootstrap-toc.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
@@ -31,7 +31,7 @@
         <span class="icon-bar"></span>
       </button>
       <span class="navbar-brand">
-        <a class="navbar-link" href="../index.html">tsfm</a>
+        <a class="navbar-link" href="../index.html">zukzeit</a>
         <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0</span>
       </span>
     </div>
@@ -68,7 +68,7 @@
       </ul>
 <ul class="nav navbar-nav navbar-right">
 <li>
-  <a href="https://github.com/pedrobtz/tsfm/" class="external-link">
+  <a href="https://github.com/pedrobtz/zukzeit/" class="external-link">
     <span class="fab fa-github fa-lg"></span>
 
   </a>
@@ -90,7 +90,7 @@
 resampling</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/pedrobtz/tsfm/blob/main/vignettes/rolling-origin-tuning.Rmd" class="external-link"><code>vignettes/rolling-origin-tuning.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/pedrobtz/zukzeit/blob/main/vignettes/rolling-origin-tuning.Rmd" class="external-link"><code>vignettes/rolling-origin-tuning.Rmd</code></a></small>
       <div class="hidden name"><code>rolling-origin-tuning.Rmd</code></div>
 
     </div>
@@ -99,37 +99,64 @@ resampling</h1>
     
 <p>How much history should a foundation model condition on? More context
 is not always better — it can dilute recent signal and cost compute.
-Because <code>tsfm</code> exposes <code>context_length</code> as a
+Because <code>zukzeit</code> exposes <code>context_length</code> as a
 tunable <code>dials</code> parameter, you can answer this empirically
 with the standard tidymodels tuning machinery over
 <strong>rolling-origin</strong> (time-aware) resamples, rather than
 random cross-validation that would leak the future into the past.</p>
 <p>The code below uses the executable <code>stub</code> fixture to
-demonstrate the mechanics. It is not a foundation-model benchmark;
-repeat the workflow with TimesFM only after that checkpoint passes the
-package’s support gates.</p>
+demonstrate the mechanics, and every output is produced when this
+vignette is built. It is not a foundation-model benchmark: the stub
+forecasts the last observed value, so its score cannot depend on how
+much history it keeps. Repeat the workflow with TimesFM for a result
+that means something.</p>
+<div class="section level2">
+<h2 id="some-history-to-search-over">Some history to search over<a class="anchor" aria-label="anchor" href="#some-history-to-search-over"></a>
+</h2>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/pedrobtz/zukzeit" class="external-link">zukzeit</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">20260904</span><span class="op">)</span></span>
+<span><span class="va">months</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="st">"2015-01-01"</span><span class="op">)</span>, by <span class="op">=</span> <span class="st">"month"</span>, length.out <span class="op">=</span> <span class="fl">96</span><span class="op">)</span></span>
+<span><span class="va">history</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  store <span class="op">=</span> <span class="st">"north"</span>,</span>
+<span>  month <span class="op">=</span> <span class="va">months</span>,</span>
+<span>  sales <span class="op">=</span> <span class="fl">100</span> <span class="op">+</span> <span class="fl">0.8</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">months</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fl">10</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">sin</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">months</span><span class="op">)</span> <span class="op">*</span> <span class="va">pi</span> <span class="op">/</span> <span class="fl">6</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">months</span><span class="op">)</span>, sd <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">history</span>, <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   store      month    sales</span></span>
+<span><span class="co">#&gt; 1 north 2015-01-01 103.2887</span></span>
+<span><span class="co">#&gt; 2 north 2015-02-01 112.1575</span></span>
+<span><span class="co">#&gt; 3 north 2015-03-01 113.0156</span></span></code></pre></div>
+</div>
 <div class="section level2">
 <h2 id="the-spec">The spec<a class="anchor" aria-label="anchor" href="#the-spec"></a>
 </h2>
 <p>Mark <code>context_length</code> for tuning; everything else is fixed
 through the engine:</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/pedrobtz/tsfm" class="external-link">tsfm</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/tidymodels/parsnip" class="external-link">parsnip</a></span><span class="op">)</span></span>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/tidymodels/parsnip" class="external-link">parsnip</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/tidymodels/workflows" class="external-link">workflows</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tune.tidymodels.org/" class="external-link">tune</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dials.tidymodels.org" class="external-link">dials</a></span><span class="op">)</span></span>
+<span><span class="co">#&gt; Loading required package: scales</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rsample.tidymodels.org" class="external-link">rsample</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">spec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tsfm_reg.html">tsfm_reg</a></span><span class="op">(</span>context_length <span class="op">=</span> <span class="fu"><a href="https://hardhat.tidymodels.org/reference/tune.html" class="external-link">tune</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://parsnip.tidymodels.org/reference/set_engine.html" class="external-link">set_engine</a></span><span class="op">(</span><span class="st">"tsfm"</span>,</span>
+<span><span class="va">spec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/zuk_reg.html">zuk_reg</a></span><span class="op">(</span>context_length <span class="op">=</span> <span class="fu"><a href="https://hardhat.tidymodels.org/reference/tune.html" class="external-link">tune</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://parsnip.tidymodels.org/reference/set_engine.html" class="external-link">set_engine</a></span><span class="op">(</span><span class="st">"zukzeit"</span>,</span>
 <span>             model_id <span class="op">=</span> <span class="st">"stub"</span>,</span>
-<span>             index    <span class="op">=</span> <span class="st">"date"</span>,</span>
+<span>             index    <span class="op">=</span> <span class="st">"month"</span>,</span>
 <span>             id       <span class="op">=</span> <span class="st">"store"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">wf</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://workflows.tidymodels.org/reference/workflow.html" class="external-link">workflow</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://workflows.tidymodels.org/reference/add_formula.html" class="external-link">add_formula</a></span><span class="op">(</span><span class="va">demand</span> <span class="op">~</span> <span class="va">date</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://workflows.tidymodels.org/reference/add_variables.html" class="external-link">add_variables</a></span><span class="op">(</span>outcomes <span class="op">=</span> <span class="va">sales</span>, predictors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">month</span>, <span class="va">store</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://workflows.tidymodels.org/reference/add_model.html" class="external-link">add_model</a></span><span class="op">(</span><span class="va">spec</span><span class="op">)</span></span></code></pre></div>
+<p><code><a href="https://workflows.tidymodels.org/reference/add_variables.html" class="external-link">add_variables()</a></code> matters here. <code>index</code> and
+<code>id</code> name columns the engine reads out of the data it is
+handed, and <code><a href="https://workflows.tidymodels.org/reference/add_formula.html" class="external-link">add_formula()</a></code> keeps only the terms in the
+formula — which drops <code>store</code> before the engine sees it, and
+the fit then fails on a missing column.</p>
 </div>
 <div class="section level2">
 <h2 id="rolling-origin-resamples">Rolling-origin resamples<a class="anchor" aria-label="anchor" href="#rolling-origin-resamples"></a>
@@ -137,39 +164,77 @@ through the engine:</p>
 <p><code><a href="https://rsample.tidymodels.org/reference/slide-resampling.html" class="external-link">rsample::sliding_period()</a></code> builds analysis/assessment
 splits that always move forward in time — the assessment window is
 strictly after its analysis window:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">folds</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rsample.tidymodels.org/reference/slide-resampling.html" class="external-link">sliding_period</a></span><span class="op">(</span></span>
-<span>  <span class="va">train_df</span>,</span>
-<span>  index  <span class="op">=</span> <span class="va">date</span>,</span>
-<span>  period <span class="op">=</span> <span class="st">"month"</span>,</span>
-<span>  lookback   <span class="op">=</span> <span class="cn">Inf</span>,   <span class="co"># expanding-origin: use all history up to each split</span></span>
-<span>  assess_stop <span class="op">=</span> <span class="fl">1</span>     <span class="co"># score one month ahead</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<span>  <span class="va">history</span>,</span>
+<span>  index       <span class="op">=</span> <span class="va">month</span>,</span>
+<span>  period      <span class="op">=</span> <span class="st">"year"</span>,</span>
+<span>  lookback    <span class="op">=</span> <span class="cn">Inf</span>,   <span class="co"># expanding origin: all history up to each split</span></span>
+<span>  assess_stop <span class="op">=</span> <span class="fl">1</span>      <span class="co"># score one year ahead</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">folds</span></span>
+<span><span class="co">#&gt; # Sliding period resampling </span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 7 × 2</span></span></span>
+<span><span class="co">#&gt;   splits          id    </span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;list&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> <span style="color: #949494;">&lt;split [12/12]&gt;</span> Slice1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> <span style="color: #949494;">&lt;split [24/12]&gt;</span> Slice2</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> <span style="color: #949494;">&lt;split [36/12]&gt;</span> Slice3</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> <span style="color: #949494;">&lt;split [48/12]&gt;</span> Slice4</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> <span style="color: #949494;">&lt;split [60/12]&gt;</span> Slice5</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> <span style="color: #949494;">&lt;split [72/12]&gt;</span> Slice6</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">7</span> <span style="color: #949494;">&lt;split [84/12]&gt;</span> Slice7</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="search">Search<a class="anchor" aria-label="anchor" href="#search"></a>
 </h2>
 <p>Give <code>context_length</code> a range and let
-<code><a href="https://tune.tidymodels.org/reference/tune_grid.html" class="external-link">tune_grid()</a></code> score each candidate with a proper
-(quantile-aware) metric:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dials.tidymodels.org/reference/grid_regular.html" class="external-link">grid_regular</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="../reference/context_length.html">context_length</a></span><span class="op">(</span>range <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">64L</span>, <span class="fl">512L</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  levels <span class="op">=</span> <span class="fl">5</span></span>
-<span><span class="op">)</span></span>
+<code><a href="https://tune.tidymodels.org/reference/tune_grid.html" class="external-link">tune_grid()</a></code> score each candidate:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dials.tidymodels.org/reference/grid_regular.html" class="external-link">grid_regular</a></span><span class="op">(</span><span class="fu"><a href="../reference/context_length.html">context_length</a></span><span class="op">(</span>range <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">12L</span>, <span class="fl">60L</span><span class="op">)</span><span class="op">)</span>, levels <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tune.tidymodels.org/reference/tune_grid.html" class="external-link">tune_grid</a></span><span class="op">(</span></span>
 <span>  <span class="va">wf</span>,</span>
 <span>  resamples <span class="op">=</span> <span class="va">folds</span>,</span>
 <span>  grid      <span class="op">=</span> <span class="va">grid</span>,</span>
-<span>  metrics   <span class="op">=</span> <span class="fu">metric_set</span><span class="op">(</span><span class="fu">yardstick</span><span class="fu">::</span><span class="va"><a href="https://yardstick.tidymodels.org/reference/rmse.html" class="external-link">rmse</a></span>, <span class="fu">yardstick</span><span class="fu">::</span><span class="va"><a href="https://yardstick.tidymodels.org/reference/mae.html" class="external-link">mae</a></span><span class="op">)</span></span>
+<span>  metrics   <span class="op">=</span> <span class="fu">yardstick</span><span class="fu">::</span><span class="fu"><a href="https://yardstick.tidymodels.org/reference/metric_set.html" class="external-link">metric_set</a></span><span class="op">(</span><span class="fu">yardstick</span><span class="fu">::</span><span class="va"><a href="https://yardstick.tidymodels.org/reference/rmse.html" class="external-link">rmse</a></span>, <span class="fu">yardstick</span><span class="fu">::</span><span class="va"><a href="https://yardstick.tidymodels.org/reference/mae.html" class="external-link">mae</a></span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://tune.tidymodels.org/reference/show_best.html" class="external-link">show_best</a></span><span class="op">(</span><span class="va">res</span>, metric <span class="op">=</span> <span class="st">"rmse"</span><span class="op">)</span></span>
-<span><span class="va">best</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tune.tidymodels.org/reference/show_best.html" class="external-link">select_best</a></span><span class="op">(</span><span class="va">res</span>, metric <span class="op">=</span> <span class="st">"rmse"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 4 × 7</span></span></span>
+<span><span class="co">#&gt;   context_length .metric .estimator  mean     n std_err .config        </span></span>
+<span><span class="co">#&gt;            <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>             12 rmse    standard    7.57     7   0.400 pre0_mod1_post0</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>             28 rmse    standard    7.57     7   0.400 pre0_mod2_post0</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>             44 rmse    standard    7.57     7   0.400 pre0_mod3_post0</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>             60 rmse    standard    7.57     7   0.400 pre0_mod4_post0</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">best</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tune.tidymodels.org/reference/show_best.html" class="external-link">select_best</a></span><span class="op">(</span><span class="va">res</span>, metric <span class="op">=</span> <span class="st">"rmse"</span><span class="op">)</span></span>
+<span><span class="va">best</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 2</span></span></span>
+<span><span class="co">#&gt;   context_length .config        </span></span>
+<span><span class="co">#&gt;            <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>             12 pre0_mod1_post0</span></span>
 <span></span>
 <span><span class="va">final_fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tune.tidymodels.org/reference/finalize_model.html" class="external-link">finalize_workflow</a></span><span class="op">(</span><span class="va">wf</span>, <span class="va">best</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://generics.r-lib.org/reference/fit.html" class="external-link">fit</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">train_df</span><span class="op">)</span></span></code></pre></div>
+<span>  <span class="fu"><a href="https://generics.r-lib.org/reference/fit.html" class="external-link">fit</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">history</span><span class="op">)</span></span>
+<span><span class="va">final_fit</span></span>
+<span><span class="co">#&gt; ══ Workflow [trained] ══════════════════════════════════════════════════════════</span></span>
+<span><span class="co">#&gt; <span style="font-style: italic;">Preprocessor:</span> Variables</span></span>
+<span><span class="co">#&gt; <span style="font-style: italic;">Model:</span> zuk_reg()</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; ── Preprocessor ────────────────────────────────────────────────────────────────</span></span>
+<span><span class="co">#&gt; Outcomes: sales</span></span>
+<span><span class="co">#&gt; Predictors: c(month, store)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; ── Model ───────────────────────────────────────────────────────────────────────</span></span>
+<span><span class="co">#&gt; <span style="color: #0000BB;">&lt;zuk_fit&gt;</span> (<span style="color: #0000BB;">"stub"</span>)</span></span>
+<span><span class="co">#&gt; target <span style="color: #0000BB;">"..y"</span> over <span style="color: #0000BB;">1</span> series</span></span>
+<span><span class="co">#&gt; <span style="color: #0000BB;">&lt;zuk_fit&gt;</span> (<span style="color: #0000BB;">"stub"</span>)</span></span>
+<span><span class="co">#&gt; target <span style="color: #0000BB;">"..y"</span> over <span style="color: #0000BB;">1</span> series</span></span></code></pre></div>
+<p><code><a href="https://tune.tidymodels.org/reference/finalize_model.html" class="external-link">finalize_workflow()</a></code> substitutes the chosen value back
+into the spec through the specification’s <code><a href="https://rdrr.io/r/stats/update.html" class="external-link">update()</a></code> method,
+and the refit engine then keeps only that much history.</p>
 </div>
 <div class="section level2">
 <h2 id="notes">Notes<a class="anchor" aria-label="anchor" href="#notes"></a>
@@ -183,6 +248,10 @@ in package tests.</li>
 zero-shot models), so keep the grid small and prefer
 <code><a href="https://rsample.tidymodels.org/reference/slide-resampling.html" class="external-link">sliding_period()</a></code> windows that reflect your real forecast
 horizon.</li>
+<li>Scores that are identical across the grid, as above, mean the model
+is not actually using the extra history — which for the stub is the
+correct answer, and for a real checkpoint is a finding worth
+investigating.</li>
 </ul>
 </div>
   </div>

@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Exercising the forecasting workflow • tsfm</title>
+<title>Exercising the forecasting workflow • zukzeit</title>
 <!-- jquery --><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script><!-- Bootstrap --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha256-bZLfwXAP04zRMK2BjiO8iu9pf4FbLqX6zitd+tIvLhE=" crossorigin="anonymous">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script><!-- bootstrap-toc --><link rel="stylesheet" href="../bootstrap-toc.css">
 <script src="../bootstrap-toc.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
@@ -31,7 +31,7 @@
         <span class="icon-bar"></span>
       </button>
       <span class="navbar-brand">
-        <a class="navbar-link" href="../index.html">tsfm</a>
+        <a class="navbar-link" href="../index.html">zukzeit</a>
         <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0</span>
       </span>
     </div>
@@ -68,7 +68,7 @@
       </ul>
 <ul class="nav navbar-nav navbar-right">
 <li>
-  <a href="https://github.com/pedrobtz/tsfm/" class="external-link">
+  <a href="https://github.com/pedrobtz/zukzeit/" class="external-link">
     <span class="fab fa-github fa-lg"></span>
 
   </a>
@@ -89,7 +89,7 @@
       <h1 data-toc-skip>Exercising the forecasting workflow</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/pedrobtz/tsfm/blob/main/vignettes/zero-shot-workflow.Rmd" class="external-link"><code>vignettes/zero-shot-workflow.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/pedrobtz/zukzeit/blob/main/vignettes/zero-shot-workflow.Rmd" class="external-link"><code>vignettes/zero-shot-workflow.Rmd</code></a></small>
       <div class="hidden name"><code>zero-shot-workflow.Rmd</code></div>
 
     </div>
@@ -99,76 +99,191 @@
 <p>This vignette exercises the engine and adapter surfaces with
 <code>stub</code>, a weight-free random-walk fixture. It is not a
 foundation model — it exists so the engine and its adapters can be
-demonstrated and tested without a download.</p>
+demonstrated and tested without a download. Every output below is
+produced when this vignette is built.</p>
 <p>For the same workflow driven by a real checkpoint, see
 <code><a href="../articles/timesfm-zero-shot.html">vignette("timesfm-zero-shot")</a></code>.</p>
 <div class="section level2">
 <h2 id="load-a-model">Load a model<a class="anchor" aria-label="anchor" href="#load-a-model"></a>
 </h2>
-<p><code><a href="../reference/tsfm_pretrained.html">tsfm_pretrained()</a></code> returns a uniform model handle. The
+<p><code><a href="../reference/zuk_pretrained.html">zuk_pretrained()</a></code> returns a uniform model handle. The
 stub branch is entirely local and deterministic:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/pedrobtz/tsfm" class="external-link">tsfm</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/pedrobtz/zukzeit" class="external-link">zukzeit</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tsfm_pretrained.html">tsfm_pretrained</a></span><span class="op">(</span><span class="st">"stub"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/zuk_pretrained.html">zuk_pretrained</a></span><span class="op">(</span><span class="st">"stub"</span><span class="op">)</span></span></code></pre></div>
 <p>Before doing any work, ask what the model can do. The capability
 report is checked <em>before</em> inference, so an unsupported request
 fails fast with a clear message instead of deep inside a tensor op:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/tsfm_capabilities.html">tsfm_capabilities</a></span><span class="op">(</span><span class="va">model</span><span class="op">)</span></span>
-<span><span class="co">#&gt; &lt;tsfm_capabilities&gt;</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/zuk_capabilities.html">zuk_capabilities</a></span><span class="op">(</span><span class="va">model</span><span class="op">)</span></span>
+<span><span class="co">#&gt; &lt;zuk_capabilities&gt;</span></span>
 <span><span class="co">#&gt;   architecture:      stub</span></span>
-<span><span class="co">#&gt;   max_context:       512         quantiles: native</span></span>
-<span><span class="co">#&gt;   multivariate:      FALSE       samples:   FALSE</span></span>
-<span><span class="co">#&gt;   past_covariates:   FALSE       future_covariates: FALSE</span></span>
-<span><span class="co">#&gt;   static_covariates: FALSE       fine_tunable: FALSE</span></span>
+<span><span class="co">#&gt;   max_context:       512        max_horizon: Inf</span></span>
+<span><span class="co">#&gt;   quantiles:         native        levels: arbitrary</span></span>
+<span><span class="co">#&gt;   multivariate:      FALSE        samples:   FALSE</span></span>
+<span><span class="co">#&gt;   past_covariates:   FALSE        future_covariates: FALSE</span></span>
+<span><span class="co">#&gt;   static_covariates: FALSE        fine_tunable: FALSE</span></span>
 <span><span class="co">#&gt;   license:           MIT</span></span></code></pre></div>
+<p>Requests are validated against that report at the engine boundary,
+not after it:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://generics.r-lib.org/reference/forecast.html" class="external-link">forecast</a></span><span class="op">(</span><span class="va">model</span>, <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>t <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">10</span>, y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>         h <span class="op">=</span> <span class="fl">5</span>, index <span class="op">=</span> <span class="st">"t"</span>, target <span class="op">=</span> <span class="st">"y"</span>, quantile_levels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">1.5</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;"> in `zuk_infer()`:</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> Quantile levels must be unique finite probabilities strictly between 0</span></span>
+<span><span class="co">#&gt;   and 1.</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="path-1-the-forecast-convenience-surface-tsibble">Path 1 — the <code>forecast()</code> convenience surface
-(tsibble)<a class="anchor" aria-label="anchor" href="#path-1-the-forecast-convenience-surface-tsibble"></a>
+<h2 id="a-panel-to-forecast">A panel to forecast<a class="anchor" aria-label="anchor" href="#a-panel-to-forecast"></a>
 </h2>
-<p>Hand a panel of history and a horizon; get a forecast object back
-that converts to a <code>fable</code> for the tidyverts
-accuracy/reconciliation stack:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tsibble.tidyverts.org" class="external-link">tsibble</a></span><span class="op">)</span></span>
+<p>Two monthly series, split into observed history and the twelve months
+held back to score against:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">months</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="st">"2015-01-01"</span><span class="op">)</span>, by <span class="op">=</span> <span class="st">"month"</span>, length.out <span class="op">=</span> <span class="fl">96</span><span class="op">)</span></span>
+<span><span class="va">panel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  store <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"north"</span>, <span class="st">"south"</span><span class="op">)</span>, each <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">months</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  month <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="va">months</span>, <span class="fl">2</span><span class="op">)</span>,</span>
+<span>  sales <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>    <span class="fl">100</span> <span class="op">+</span> <span class="fl">0.8</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">months</span><span class="op">)</span> <span class="op">+</span> <span class="fl">10</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">sin</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">months</span><span class="op">)</span> <span class="op">*</span> <span class="va">pi</span> <span class="op">/</span> <span class="fl">6</span><span class="op">)</span>,</span>
+<span>    <span class="fl">50</span> <span class="op">+</span> <span class="fl">0.3</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">months</span><span class="op">)</span> <span class="op">+</span> <span class="fl">4</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">cos</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">months</span><span class="op">)</span> <span class="op">*</span> <span class="va">pi</span> <span class="op">/</span> <span class="fl">6</span><span class="op">)</span></span>
+<span>  <span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">2</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">months</span><span class="op">)</span>, sd <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">fc</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://generics.r-lib.org/reference/forecast.html" class="external-link">forecast</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">tourism_history</span>, h <span class="op">=</span> <span class="fl">12</span>,</span>
+<span><span class="va">split_at</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">months</span><span class="op">)</span> <span class="op">-</span> <span class="fl">365</span></span>
+<span><span class="va">history</span> <span class="op">&lt;-</span> <span class="va">panel</span><span class="op">[</span><span class="va">panel</span><span class="op">$</span><span class="va">month</span> <span class="op">&lt;=</span> <span class="va">split_at</span>, <span class="op">]</span></span>
+<span><span class="va">actuals</span> <span class="op">&lt;-</span> <span class="va">panel</span><span class="op">[</span><span class="va">panel</span><span class="op">$</span><span class="va">month</span> <span class="op">&gt;</span> <span class="va">split_at</span>, <span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">history</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] 168</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">actuals</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] 24</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="path-1-the-forecast-convenience-surface">Path 1 — the <code>forecast()</code> convenience surface<a class="anchor" aria-label="anchor" href="#path-1-the-forecast-convenience-surface"></a>
+</h2>
+<p>Hand a panel of history and a horizon; get a forecast object back.
+This path has no optional dependencies at all — a plain data frame is
+enough, as long as the index and target columns are named:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fc</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://generics.r-lib.org/reference/forecast.html" class="external-link">forecast</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">history</span>, h <span class="op">=</span> <span class="fl">12</span>,</span>
+<span>               index <span class="op">=</span> <span class="st">"month"</span>, key <span class="op">=</span> <span class="st">"store"</span>, target <span class="op">=</span> <span class="st">"sales"</span>,</span>
 <span>               quantile_levels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">0.5</span>, <span class="fl">0.9</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">fc</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">fabletools</span><span class="fu">::</span><span class="fu"><a href="https://fabletools.tidyverts.org/reference/as-fable.html" class="external-link">as_fable</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">fabletools</span><span class="fu">::</span><span class="fu"><a href="https://generics.r-lib.org/reference/accuracy.html" class="external-link">accuracy</a></span><span class="op">(</span><span class="va">tourism_actuals</span><span class="op">)</span></span></code></pre></div>
-<p><code>tsfm</code> registers a method on
-<code><a href="https://fabletools.tidyverts.org/reference/as-fable.html" class="external-link">fabletools::as_fable()</a></code> rather than exporting a generic of
-its own, so the verb keeps working when fabletools and <code>tsfm</code>
-are both attached. Call it qualified, or
-<code><a href="https://fabletools.tidyverts.org/" class="external-link">library(fabletools)</a></code> first.</p>
+<span><span class="va">fc</span></span>
+<span><span class="co">#&gt; <span style="color: #0000BB;">&lt;zuk_forecast&gt;</span> of <span style="color: #0000BB;">"sales"</span></span></span>
+<span><span class="co">#&gt; <span style="color: #0000BB;">2</span> series x horizon, quantile levels <span style="color: #0000BB;">0.1</span>, <span style="color: #0000BB;">0.5</span>, and <span style="color: #0000BB;">0.9</span></span></span>
+<span><span class="co">#&gt;    store      month    .mean .distribution</span></span>
+<span><span class="co">#&gt; 1  north 2022-01-01 164.1529   quantile[3]</span></span>
+<span><span class="co">#&gt; 2  north 2022-02-01 164.1529   quantile[3]</span></span>
+<span><span class="co">#&gt; 3  north 2022-03-04 164.1529   quantile[3]</span></span>
+<span><span class="co">#&gt; 4  north 2022-04-04 164.1529   quantile[3]</span></span>
+<span><span class="co">#&gt; 5  north 2022-05-05 164.1529   quantile[3]</span></span>
+<span><span class="co">#&gt; 6  north 2022-06-05 164.1529   quantile[3]</span></span>
+<span><span class="co">#&gt; 7  north 2022-07-06 164.1529   quantile[3]</span></span>
+<span><span class="co">#&gt; 8  north 2022-08-06 164.1529   quantile[3]</span></span>
+<span><span class="co">#&gt; 9  north 2022-09-06 164.1529   quantile[3]</span></span>
+<span><span class="co">#&gt; 10 north 2022-10-07 164.1529   quantile[3]</span></span></code></pre></div>
+<p>The forecast carries both views of the same predicted quantiles: a
+<code>distributional</code> column for the tidyverts, and the raw
+quantile matrix for the tidymodels prediction columns.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">fc</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   store      month    .mean .distribution</span></span>
+<span><span class="co">#&gt; 1 north 2022-01-01 164.1529   quantile[3]</span></span>
+<span><span class="co">#&gt; 2 north 2022-02-01 164.1529   quantile[3]</span></span>
+<span><span class="co">#&gt; 3 north 2022-03-04 164.1529   quantile[3]</span></span></code></pre></div>
+<p>Note that the future index comes back as <code>Date</code>, the type
+it went in as. The engine extends an index in its own units, so a
+<code>yearmonth</code> panel returns <code>yearmonth</code>, an hourly
+<code>POSIXct</code> panel returns <code>POSIXct</code>, and the result
+joins straight back onto the data it came from.</p>
 </div>
 <div class="section level2">
-<h2 id="path-2-a-tidymodels-workflow">Path 2 — a tidymodels workflow<a class="anchor" aria-label="anchor" href="#path-2-a-tidymodels-workflow"></a>
+<h2 id="path-2-the-tidyverts">Path 2 — the tidyverts<a class="anchor" aria-label="anchor" href="#path-2-the-tidyverts"></a>
+</h2>
+<p><code>zukzeit</code> registers a method on
+<code><a href="https://fabletools.tidyverts.org/reference/as-fable.html" class="external-link">fabletools::as_fable()</a></code> rather than exporting a generic of
+its own, so the verb keeps working when fabletools and
+<code>zukzeit</code> are both attached. Call it qualified, or
+<code><a href="https://fabletools.tidyverts.org/" class="external-link">library(fabletools)</a></code> first.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># yearmonth is the natural index for monthly data: calendar months are not</span></span>
+<span><span class="co"># equally spaced in days, so a Date index would put the forecasts a few days</span></span>
+<span><span class="co"># off the observed month starts and nothing would join.</span></span>
+<span><span class="va">as_monthly</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">data</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">data</span><span class="op">$</span><span class="va">month</span> <span class="op">&lt;-</span> <span class="fu">tsibble</span><span class="fu">::</span><span class="fu"><a href="https://tsibble.tidyverts.org/reference/year-month.html" class="external-link">yearmonth</a></span><span class="op">(</span><span class="va">data</span><span class="op">$</span><span class="va">month</span><span class="op">)</span></span>
+<span>  <span class="fu">tsibble</span><span class="fu">::</span><span class="fu"><a href="https://tsibble.tidyverts.org/reference/as-tsibble.html" class="external-link">as_tsibble</a></span><span class="op">(</span><span class="va">data</span>, index <span class="op">=</span> <span class="va">month</span>, key <span class="op">=</span> <span class="va">store</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="va">history_tsbl</span> <span class="op">&lt;-</span> <span class="fu">as_monthly</span><span class="op">(</span><span class="va">history</span><span class="op">)</span></span>
+<span><span class="va">actuals_tsbl</span> <span class="op">&lt;-</span> <span class="fu">as_monthly</span><span class="op">(</span><span class="va">actuals</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">fabletools</span><span class="fu">::</span><span class="fu"><a href="https://fabletools.tidyverts.org/reference/as-fable.html" class="external-link">as_fable</a></span><span class="op">(</span><span class="fu"><a href="https://generics.r-lib.org/reference/forecast.html" class="external-link">forecast</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">history_tsbl</span>, h <span class="op">=</span> <span class="fl">12</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">fabletools</span><span class="fu">::</span><span class="fu"><a href="https://generics.r-lib.org/reference/accuracy.html" class="external-link">accuracy</a></span><span class="op">(</span><span class="va">actuals_tsbl</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 10</span></span></span>
+<span><span class="co">#&gt;   store .type    ME  RMSE   MAE   MPE  MAPE  MASE RMSSE  ACF1</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> north Test   9.41 10.7   9.41  5.34  5.34   <span style="color: #BB0000;">NaN</span>   <span style="color: #BB0000;">NaN</span> 0.725</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> south Test  -<span style="color: #BB0000;">4.73</span>  5.83  5.06 -<span style="color: #BB0000;">6.35</span>  6.75   <span style="color: #BB0000;">NaN</span>   <span style="color: #BB0000;">NaN</span> 0.458</span></span></code></pre></div>
+<p><code><a href="../reference/TSFM.html">TSFM()</a></code> is the other tidyverts route: it composes inside
+<code><a href="https://fabletools.tidyverts.org/reference/model.html" class="external-link">fabletools::model()</a></code> next to any other model definition, one
+key at a time.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fits</span> <span class="op">&lt;-</span> <span class="fu">fabletools</span><span class="fu">::</span><span class="fu"><a href="https://fabletools.tidyverts.org/reference/model.html" class="external-link">model</a></span><span class="op">(</span><span class="va">history_tsbl</span>, zukzeit <span class="op">=</span> <span class="fu"><a href="../reference/TSFM.html">TSFM</a></span><span class="op">(</span><span class="va">sales</span>, model_id <span class="op">=</span> <span class="st">"stub"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">fits</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A mable: 2 x 2</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># Key:     store [2]</span></span></span>
+<span><span class="co">#&gt;   store      zukzeit</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;model&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> north &lt;TSFM[stub]&gt;</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> south &lt;TSFM[stub]&gt;</span></span>
+<span></span>
+<span><span class="fu">fabletools</span><span class="fu">::</span><span class="fu"><a href="https://generics.r-lib.org/reference/forecast.html" class="external-link">forecast</a></span><span class="op">(</span><span class="va">fits</span>, h <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A fable: 6 x 5 [1M]</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># Key:     store, .model [2]</span></span></span>
+<span><span class="co">#&gt;   store .model     month       sales .mean</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;mth&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;dist&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> north zukzeit 2022 Jan quantile[3] 164. </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> north zukzeit 2022 Feb quantile[3] 164. </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> north zukzeit 2022 Mar quantile[3] 164. </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> south zukzeit 2022 Jan quantile[3]  81.6</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> south zukzeit 2022 Feb quantile[3]  81.6</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> south zukzeit 2022 Mar quantile[3]  81.6</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="path-3-a-tidymodels-workflow">Path 3 — a tidymodels workflow<a class="anchor" aria-label="anchor" href="#path-3-a-tidymodels-workflow"></a>
 </h2>
 <p>The tidymodels surface is a <code>parsnip</code> spec inside a
 <code><a href="https://workflows.tidymodels.org/reference/workflow.html" class="external-link">workflow()</a></code>. The model is chosen by the engine’s
 <code>model_id</code>; <strong>everything else stays the
 same.</strong></p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/tidymodels/parsnip" class="external-link">parsnip</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/tidymodels/workflows" class="external-link">workflows</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">spec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tsfm_reg.html">tsfm_reg</a></span><span class="op">(</span>context_length <span class="op">=</span> <span class="fl">512L</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://parsnip.tidymodels.org/reference/set_engine.html" class="external-link">set_engine</a></span><span class="op">(</span><span class="st">"tsfm"</span>,</span>
+<span><span class="va">spec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/zuk_reg.html">zuk_reg</a></span><span class="op">(</span>context_length <span class="op">=</span> <span class="fl">512L</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://parsnip.tidymodels.org/reference/set_engine.html" class="external-link">set_engine</a></span><span class="op">(</span><span class="st">"zukzeit"</span>,</span>
 <span>             model_id <span class="op">=</span> <span class="st">"stub"</span>,</span>
-<span>             index    <span class="op">=</span> <span class="st">"date"</span>,</span>
+<span>             index    <span class="op">=</span> <span class="st">"month"</span>,</span>
 <span>             id       <span class="op">=</span> <span class="st">"store"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">wf</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://workflows.tidymodels.org/reference/workflow.html" class="external-link">workflow</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://workflows.tidymodels.org/reference/add_formula.html" class="external-link">add_formula</a></span><span class="op">(</span><span class="va">demand</span> <span class="op">~</span> <span class="va">date</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://workflows.tidymodels.org/reference/add_variables.html" class="external-link">add_variables</a></span><span class="op">(</span>outcomes <span class="op">=</span> <span class="va">sales</span>, predictors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">month</span>, <span class="va">store</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://workflows.tidymodels.org/reference/add_model.html" class="external-link">add_model</a></span><span class="op">(</span><span class="va">spec</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://generics.r-lib.org/reference/fit.html" class="external-link">fit</a></span><span class="op">(</span><span class="va">wf</span>, data <span class="op">=</span> <span class="va">train_df</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">fit</span>, new_data <span class="op">=</span> <span class="va">future_df</span><span class="op">)</span>   <span class="co"># tibble: .pred</span></span></code></pre></div>
+<span><span class="va">fitted</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://generics.r-lib.org/reference/fit.html" class="external-link">fit</a></span><span class="op">(</span><span class="va">wf</span>, data <span class="op">=</span> <span class="va">history</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">fitted</span>, new_data <span class="op">=</span> <span class="va">actuals</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"store"</span>, <span class="st">"month"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 3 × 1</span></span></span>
+<span><span class="co">#&gt;   .pred</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>  164.</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>  164.</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>  164.</span></span></code></pre></div>
+<p><code><a href="https://workflows.tidymodels.org/reference/add_variables.html" class="external-link">add_variables()</a></code> rather than <code><a href="https://workflows.tidymodels.org/reference/add_formula.html" class="external-link">add_formula()</a></code>
+is deliberate. <code>index</code> and <code>id</code> name columns the
+engine reads out of the data it is handed, and a formula preprocessor
+keeps only the terms in the formula — which would drop
+<code>store</code> before the engine ever sees it.</p>
 </div>
 <div class="section level2">
 <h2 id="tuning-the-context-length">Tuning the context length<a class="anchor" aria-label="anchor" href="#tuning-the-context-length"></a>
@@ -176,29 +291,73 @@ same.</strong></p>
 <p><code>context_length</code> is a tunable <code>dials</code>
 parameter, so a rolling-origin search over <code>rsample</code>
 resamples works out of the box:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tune.tidymodels.org/" class="external-link">tune</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rsample.tidymodels.org" class="external-link">rsample</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">spec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tsfm_reg.html">tsfm_reg</a></span><span class="op">(</span>context_length <span class="op">=</span> <span class="fu"><a href="https://hardhat.tidymodels.org/reference/tune.html" class="external-link">tune</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://parsnip.tidymodels.org/reference/set_engine.html" class="external-link">set_engine</a></span><span class="op">(</span><span class="st">"tsfm"</span>, model_id <span class="op">=</span> <span class="st">"stub"</span>, index <span class="op">=</span> <span class="st">"date"</span>, id <span class="op">=</span> <span class="st">"store"</span><span class="op">)</span></span>
+<span><span class="va">tuned</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tune.tidymodels.org/reference/tune_grid.html" class="external-link">tune_grid</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://workflows.tidymodels.org/reference/workflow.html" class="external-link">workflow</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="https://workflows.tidymodels.org/reference/add_variables.html" class="external-link">add_variables</a></span><span class="op">(</span>outcomes <span class="op">=</span> <span class="va">sales</span>, predictors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">month</span>, <span class="va">store</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="https://workflows.tidymodels.org/reference/add_model.html" class="external-link">add_model</a></span><span class="op">(</span><span class="fu"><a href="../reference/zuk_reg.html">zuk_reg</a></span><span class="op">(</span>context_length <span class="op">=</span> <span class="fu"><a href="https://hardhat.tidymodels.org/reference/tune.html" class="external-link">tune</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>                <span class="fu"><a href="https://parsnip.tidymodels.org/reference/set_engine.html" class="external-link">set_engine</a></span><span class="op">(</span><span class="st">"zukzeit"</span>, model_id <span class="op">=</span> <span class="st">"stub"</span>,</span>
+<span>                           index <span class="op">=</span> <span class="st">"month"</span>, id <span class="op">=</span> <span class="st">"store"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  resamples <span class="op">=</span> <span class="fu"><a href="https://rsample.tidymodels.org/reference/slide-resampling.html" class="external-link">sliding_period</a></span><span class="op">(</span><span class="va">history</span><span class="op">[</span><span class="va">history</span><span class="op">$</span><span class="va">store</span> <span class="op">==</span> <span class="st">"north"</span>, <span class="op">]</span>,</span>
+<span>                             index <span class="op">=</span> <span class="va">month</span>, period <span class="op">=</span> <span class="st">"year"</span>,</span>
+<span>                             lookback <span class="op">=</span> <span class="cn">Inf</span>, assess_stop <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>,</span>
+<span>  grid <span class="op">=</span> <span class="fu">dials</span><span class="fu">::</span><span class="fu"><a href="https://dials.tidymodels.org/reference/grid_regular.html" class="external-link">grid_regular</a></span><span class="op">(</span><span class="fu"><a href="../reference/context_length.html">context_length</a></span><span class="op">(</span>range <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">12L</span>, <span class="fl">48L</span><span class="op">)</span><span class="op">)</span>, levels <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://tune.tidymodels.org/reference/tune_grid.html" class="external-link">tune_grid</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://workflows.tidymodels.org/reference/workflow.html" class="external-link">workflow</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://workflows.tidymodels.org/reference/add_formula.html" class="external-link">add_formula</a></span><span class="op">(</span><span class="va">demand</span> <span class="op">~</span> <span class="va">date</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://workflows.tidymodels.org/reference/add_model.html" class="external-link">add_model</a></span><span class="op">(</span><span class="va">spec</span><span class="op">)</span>,</span>
-<span>  resamples <span class="op">=</span> <span class="fu"><a href="https://rsample.tidymodels.org/reference/slide-resampling.html" class="external-link">sliding_period</a></span><span class="op">(</span><span class="va">train_df</span>, <span class="va">date</span>, <span class="st">"month"</span><span class="op">)</span>,</span>
-<span>  grid      <span class="op">=</span> <span class="fl">5</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://tune.tidymodels.org/reference/show_best.html" class="external-link">show_best</a></span><span class="op">(</span><span class="va">tuned</span>, metric <span class="op">=</span> <span class="st">"rmse"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 3 × 7</span></span></span>
+<span><span class="co">#&gt;   context_length .metric .estimator  mean     n std_err .config        </span></span>
+<span><span class="co">#&gt;            <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>             12 rmse    standard    8.00     6   0.560 pre0_mod1_post0</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>             30 rmse    standard    8.00     6   0.560 pre0_mod2_post0</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>             48 rmse    standard    8.00     6   0.560 pre0_mod3_post0</span></span></code></pre></div>
+<p>Every candidate scores the same here, and that is the expected
+answer: the stub forecasts the last observed value, so how much history
+it keeps cannot change its point forecast. Run the same search against
+TimesFM for a result that means something —
+<code><a href="../articles/rolling-origin-tuning.html">vignette("rolling-origin-tuning")</a></code> walks it in more
+detail.</p>
+</div>
+<div class="section level2">
+<h2 id="clean-up">Clean up<a class="anchor" aria-label="anchor" href="#clean-up"></a>
+</h2>
+<p>The constructed handle is held in a bounded in-session cache.
+Evicting it does not touch anything on disk:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/zuk_cache_status.html">zuk_cache_status</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt;                                model_id</span></span>
+<span><span class="co">#&gt; 1       google/timesfm-2.5-200m-pytorch</span></span>
+<span><span class="co">#&gt; 2                      amazon/chronos-2</span></span>
+<span><span class="co">#&gt; 3                   Datadog/Toto-2.0-4m</span></span>
+<span><span class="co">#&gt; 4 ibm-granite/granite-timeseries-ttm-r2</span></span>
+<span><span class="co">#&gt; 5                                  stub</span></span>
+<span><span class="co">#&gt;                                   revision device disk_cached resident</span></span>
+<span><span class="co">#&gt; 1 1d952420fba87f3c6dee4f240de0f1a0fbc790e3   &lt;NA&gt;       FALSE    FALSE</span></span>
+<span><span class="co">#&gt; 2 29ec3766d36d6f73f0696f85560a422f50e8498c   &lt;NA&gt;       FALSE    FALSE</span></span>
+<span><span class="co">#&gt; 3 8306a9801cf98c0f5ffe4b2dcc8f496e616d84d9   &lt;NA&gt;       FALSE    FALSE</span></span>
+<span><span class="co">#&gt; 4 d6a79570cac0f33d526601cd3a0fc7c80a8f9a2f   &lt;NA&gt;       FALSE    FALSE</span></span>
+<span><span class="co">#&gt; 5                                     main    cpu          NA     TRUE</span></span>
+<span><span class="co">#&gt;   size_bytes           last_used</span></span>
+<span><span class="co">#&gt; 1  925181104                &lt;NA&gt;</span></span>
+<span><span class="co">#&gt; 2  477930472                &lt;NA&gt;</span></span>
+<span><span class="co">#&gt; 3   16582848                &lt;NA&gt;</span></span>
+<span><span class="co">#&gt; 4    3240592                &lt;NA&gt;</span></span>
+<span><span class="co">#&gt; 5          0 2026-09-05 06:38:59</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/zuk_unload.html">zuk_unload</a></span><span class="op">(</span><span class="st">"stub"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="status">Status<a class="anchor" aria-label="anchor" href="#status"></a>
 </h2>
 <p>The public workflow above is real, but its model is deliberately only
-a test fixture. TimesFM 2.5 is the first implemented release model. Toto
-2.0 4M and a new native Chronos-2 port are required before
-<code>0.1.0</code>; the old Chronos-2 Brulee bridge remains unregistered
-reference work only. TTM is not a current target because the selected
-small-model slot is probabilistic Toto rather than a point-only
-checkpoint.</p>
+a test fixture. TimesFM 2.5 is the first implemented release model; see
+<code><a href="../articles/timesfm-zero-shot.html">vignette("timesfm-zero-shot")</a></code> for the same surfaces driven
+by real weights. TTM remains a registered scaffold, and Chronos-2 is
+rejected before any network or tensor work until its native port
+lands.</p>
 </div>
   </div>
 

@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Zero-shot forecasting with TimesFM 2.5 • tsfm</title>
+<title>Zero-shot forecasting with TimesFM 2.5 • zukzeit</title>
 <!-- jquery --><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script><!-- Bootstrap --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha256-bZLfwXAP04zRMK2BjiO8iu9pf4FbLqX6zitd+tIvLhE=" crossorigin="anonymous">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script><!-- bootstrap-toc --><link rel="stylesheet" href="../bootstrap-toc.css">
 <script src="../bootstrap-toc.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
@@ -31,7 +31,7 @@
         <span class="icon-bar"></span>
       </button>
       <span class="navbar-brand">
-        <a class="navbar-link" href="../index.html">tsfm</a>
+        <a class="navbar-link" href="../index.html">zukzeit</a>
         <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0</span>
       </span>
     </div>
@@ -68,7 +68,7 @@
       </ul>
 <ul class="nav navbar-nav navbar-right">
 <li>
-  <a href="https://github.com/pedrobtz/tsfm/" class="external-link">
+  <a href="https://github.com/pedrobtz/zukzeit/" class="external-link">
     <span class="fab fa-github fa-lg"></span>
 
   </a>
@@ -89,14 +89,14 @@
       <h1 data-toc-skip>Zero-shot forecasting with TimesFM 2.5</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/pedrobtz/tsfm/blob/main/vignettes/timesfm-zero-shot.Rmd" class="external-link"><code>vignettes/timesfm-zero-shot.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/pedrobtz/zukzeit/blob/main/vignettes/timesfm-zero-shot.Rmd" class="external-link"><code>vignettes/timesfm-zero-shot.Rmd</code></a></small>
       <div class="hidden name"><code>timesfm-zero-shot.Rmd</code></div>
 
     </div>
 
     
     
-<p>TimesFM 2.5 is the first architecture <code>tsfm</code> runs
+<p>TimesFM 2.5 is the first architecture <code>zukzeit</code> runs
 natively: the checkpoint is loaded into R <code>torch</code>, and no
 Python runs at inference time. This vignette walks the whole public
 surface on one panel, from discovery to forecast.</p>
@@ -106,14 +106,14 @@ output below was produced by running the code as written.</p>
 <div class="section level2">
 <h2 id="find-a-checkpoint-before-downloading-anything">Find a checkpoint before downloading anything<a class="anchor" aria-label="anchor" href="#find-a-checkpoint-before-downloading-anything"></a>
 </h2>
-<p><code><a href="../reference/tsfm_models.html">tsfm_models()</a></code> is offline and static. It never fetches a
+<p><code><a href="../reference/zuk_models.html">zuk_models()</a></code> is offline and static. It never fetches a
 config or a weight file, so you can inspect what is available, how large
 it is, and what licence its weights carry before committing to a
 download:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/pedrobtz/tsfm" class="external-link">tsfm</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/pedrobtz/zukzeit" class="external-link">zukzeit</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="../reference/tsfm_models.html">tsfm_models</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/zuk_models.html">zuk_models</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                          model_id architecture     state max_context  n_params</span></span>
 <span><span class="co">#&gt; 1 google/timesfm-2.5-200m-pytorch      timesfm supported       16256 231289280</span></span>
 <span><span class="co">#&gt;   size_bytes cached    license</span></span>
@@ -126,16 +126,16 @@ reference. The <code>license</code> column is the
 you whether a download is pending without touching the network. To fetch
 the files explicitly:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/tsfm_download.html">tsfm_download</a></span><span class="op">(</span><span class="st">"google/timesfm-2.5-200m-pytorch"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/zuk_download.html">zuk_download</a></span><span class="op">(</span><span class="st">"google/timesfm-2.5-200m-pytorch"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="load-the-model-and-check-what-it-can-do">Load the model and check what it can do<a class="anchor" aria-label="anchor" href="#load-the-model-and-check-what-it-can-do"></a>
 </h2>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tsfm_pretrained.html">tsfm_pretrained</a></span><span class="op">(</span><span class="st">"google/timesfm-2.5-200m-pytorch"</span>, device <span class="op">=</span> <span class="st">"cpu"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/zuk_pretrained.html">zuk_pretrained</a></span><span class="op">(</span><span class="st">"google/timesfm-2.5-200m-pytorch"</span>, device <span class="op">=</span> <span class="st">"cpu"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="../reference/tsfm_capabilities.html">tsfm_capabilities</a></span><span class="op">(</span><span class="va">model</span><span class="op">)</span></span>
-<span><span class="co">#&gt; &lt;tsfm_capabilities&gt;</span></span>
+<span><span class="fu"><a href="../reference/zuk_capabilities.html">zuk_capabilities</a></span><span class="op">(</span><span class="va">model</span><span class="op">)</span></span>
+<span><span class="co">#&gt; &lt;zuk_capabilities&gt;</span></span>
 <span><span class="co">#&gt;   architecture:      timesfm</span></span>
 <span><span class="co">#&gt;   max_context:       16256        max_horizon: 1024</span></span>
 <span><span class="co">#&gt;   quantiles:         native        levels: 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9</span></span>
@@ -146,7 +146,7 @@ the files explicitly:</p>
 <p>Capabilities are enforced <em>before</em> inference, so an
 unsupported request costs nothing. The <code>FALSE</code> fields are
 honest: contract v1 has no channel for covariates or multivariate
-targets, so <code>tsfm</code> refuses rather than silently ignoring
+targets, so <code>zukzeit</code> refuses rather than silently ignoring
 them.</p>
 <p><code>max_context</code> is the best case. TimesFM’s 16,384 positions
 cover the context and the forecast together, so the history actually
@@ -179,7 +179,7 @@ series.</p>
 <span>  quantile_levels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">0.5</span>, <span class="fl">0.9</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span><span class="va">fc</span></span>
-<span><span class="co">#&gt; &lt;tsfm_forecast&gt; of "sales"</span></span>
+<span><span class="co">#&gt; &lt;zuk_forecast&gt; of "sales"</span></span>
 <span><span class="co">#&gt; 2 series x horizon, quantile levels 0.1, 0.5, and 0.9</span></span>
 <span><span class="co">#&gt;    region       date    .mean .distribution</span></span>
 <span><span class="co">#&gt; 1   north 2024-04-30 162.6610   quantile[3]</span></span>
@@ -210,8 +210,8 @@ to parse:</p>
 <span><span class="co">#&gt; ✖ Unsupported: 0.05.</span></span>
 <span><span class="co">#&gt; ℹ Supported levels: 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, and 0.9.</span></span></code></pre></div>
 <p>The condition carries the leaf class
-<code>tsfm_error_quantile_levels</code> and the policy parent
-<code>tsfm_error_recoverable</code>, so a caller can branch on the
+<code>zuk_error_quantile_levels</code> and the policy parent
+<code>zuk_error_recoverable</code>, so a caller can branch on the
 outcome without matching message text.</p>
 </div>
 <div class="section level2">
@@ -283,8 +283,8 @@ any route:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/tidymodels/parsnip" class="external-link">parsnip</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">spec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tsfm_reg.html">tsfm_reg</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://parsnip.tidymodels.org/reference/set_engine.html" class="external-link">set_engine</a></span><span class="op">(</span><span class="st">"tsfm"</span>,</span>
+<span><span class="va">spec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/zuk_reg.html">zuk_reg</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://parsnip.tidymodels.org/reference/set_engine.html" class="external-link">set_engine</a></span><span class="op">(</span><span class="st">"zukzeit"</span>,</span>
 <span>             model_id <span class="op">=</span> <span class="st">"google/timesfm-2.5-200m-pytorch"</span>,</span>
 <span>             device <span class="op">=</span> <span class="st">"cpu"</span>, index <span class="op">=</span> <span class="st">"date"</span>, id <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span></span>
 <span></span>
@@ -304,11 +304,11 @@ row-aligned to <code>new_data</code>, with <code>.pred</code>,
 </h2>
 <p>A constructed handle is held in a bounded, session-level cache — by
 default one model, controlled by
-<code>options(tsfm.max_loaded_models)</code>. That is what keeps a
+<code>options(zuk.max_loaded_models)</code>. That is what keeps a
 <code><a href="https://tune.tidymodels.org/reference/tune_grid.html" class="external-link">tune_grid()</a></code> or a per-key <code><a href="../reference/TSFM.html">TSFM()</a></code> run from
 reloading 925 MB repeatedly.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/tsfm_cache_status.html">tsfm_cache_status</a></span><span class="op">(</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/zuk_cache_status.html">zuk_cache_status</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                                model_id                                 revision</span></span>
 <span><span class="co">#&gt; 1       google/timesfm-2.5-200m-pytorch 1d952420fba87f3c6dee4f240de0f1a0fbc790e3</span></span>
 <span><span class="co">#&gt; 2 ibm-granite/granite-timeseries-ttm-r2 d6a79570cac0f33d526601cd3a0fc7c80a8f9a2f</span></span>
@@ -318,10 +318,10 @@ reloading 925 MB repeatedly.</p>
 <p><code>disk_cached</code> and <code>resident</code> are deliberately
 separate: the first is about <code>hfhub</code>’s files on disk, the
 second about a constructed module in this session.
-<code><a href="../reference/tsfm_unload.html">tsfm_unload()</a></code> releases resident handles and never deletes
+<code><a href="../reference/zuk_unload.html">zuk_unload()</a></code> releases resident handles and never deletes
 downloaded files — disk lifetime stays with <code>hfhub</code>.</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/tsfm_unload.html">tsfm_unload</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/zuk_unload.html">zuk_unload</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="reproducibility">Reproducibility<a class="anchor" aria-label="anchor" href="#reproducibility"></a>
@@ -329,7 +329,7 @@ downloaded files — disk lifetime stays with <code>hfhub</code>.</p>
 <p>Support claims are pinned to immutable revisions. The catalogue
 resolves checkpoint
 <code>1d952420fba87f3c6dee4f240de0f1a0fbc790e3</code>, never a moving
-<code>main</code>, and <code><a href="../reference/tsfm_pretrained.html">tsfm_pretrained()</a></code> rejects any other
+<code>main</code>, and <code><a href="../reference/zuk_pretrained.html">zuk_pretrained()</a></code> rejects any other
 revision for a curated model. The committed parity fixtures were
 generated from official source commit
 <code>3dae50b20d7a724981e8ea36cda75578f80dd2dc</code>; see
