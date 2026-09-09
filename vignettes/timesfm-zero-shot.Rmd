@@ -11,9 +11,10 @@ vignette: >
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 ```
 
-TimesFM 2.5 is the first architecture `zukzeit` runs natively: the checkpoint is
+TimesFM 2.5 was the first architecture `zukzeit` ran natively: the checkpoint is
 loaded into R `torch`, and no Python runs at inference time. This vignette walks
-the whole public surface on one panel, from discovery to forecast.
+the whole public surface on one panel, from discovery to forecast. For the other
+two supported checkpoints, see `vignette("model-usage")`.
 
 Chunks are not evaluated when the vignette is built — that would download a
 925 MB checkpoint during `R CMD check` — but every output below was produced by

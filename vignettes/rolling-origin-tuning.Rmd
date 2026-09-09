@@ -124,7 +124,7 @@ much history.
 ## Notes
 
 - `context_length` bounds the most recent history retained by each fitted
-  engine; the end-to-end behavior is covered with the stub in package tests.
+  engine; the end-to-end behaviour is covered with the stub in package tests.
 - The heavy per-candidate cost is inference, not training (these are zero-shot
   models), so keep the grid small and prefer `sliding_period()` windows that
   reflect your real forecast horizon.

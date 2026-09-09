@@ -207,7 +207,8 @@ zuk_unload("stub")
 ## Status
 
 The public workflow above is real, but its model is deliberately only a test
-fixture. TimesFM 2.5 is the first implemented release model; see
-`vignette("timesfm-zero-shot")` for the same surfaces driven by real weights.
-TTM remains a registered scaffold, and Chronos-2 is rejected before any network
-or tensor work until its native port lands.
+fixture. TimesFM 2.5, Toto 2.0 4M, and Chronos-2 are the implemented release
+models, each passing contract conformance and numerical parity against its
+pinned reference; see `vignette("timesfm-zero-shot")` for the same surfaces
+driven by real weights. TTM remains a registered scaffold whose forward pass
+aborts by design.
