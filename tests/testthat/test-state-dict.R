@@ -88,7 +88,7 @@ test_that("the real pinned checkpoint can load locally when explicitly enabled",
   }, character(1))
   names(paths) <- record$manifest
   config <- jsonlite_read(paths[["config.json"]])
-  config$architecture <- normalize_architecture(config)
+  config$architecture <- record$architecture
   state <- zuk_load_state_dict(paths[["model.safetensors"]], record, config)
   expect_length(state, 232L)
   expect_setequal(names(state), names(timesfm_expected_state_spec(config)))

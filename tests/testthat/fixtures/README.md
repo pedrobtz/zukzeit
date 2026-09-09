@@ -41,14 +41,18 @@ ZUK_RUN_CHECKPOINT_TEST=toto2,chronos2   # 495 MB
 ZUK_RUN_CHECKPOINT_TEST=true             # all three, about 1.4 GB
 ```
 
-Roughly what each buys, from the default suite upwards:
+What each costs to run:
 
-| Setting | Tests | Download |
-|---|---|---|
-| unset | 612 | none |
-| `toto2` | 655 | 16 MB |
-| `toto2,chronos2` | 708 | 495 MB |
-| `true` | 787 | 1.4 GB |
+| Setting | Download |
+|---|---|
+| unset | none |
+| `toto2` | 16 MB |
+| `toto2,chronos2` | 495 MB |
+| `true` | 1.4 GB |
+
+Each checkpoint tier adds roughly forty tests over the default suite. Exact
+counts are deliberately not recorded here: they change with every test added
+anywhere in the package, and a stale number is worse than no number.
 
 CI runs the unset tier on every configuration --- that job is the standing
 proof the suite skips cleanly on a machine without LibTorch, which is what CRAN

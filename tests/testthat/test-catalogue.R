@@ -97,3 +97,23 @@ test_that("scaffold checkpoints fail before download", {
   expect_identical(error$capability, "model_state")
   expect_identical(error$requested, "scaffold")
 })
+
+test_that("every published record names a registered architecture", {
+  # `zuk_resolve_config()` takes the architecture straight from the catalogue
+  # record rather than sniffing `config.json`, so the catalogue is the only
+  # thing standing between a published entry and a missing constructor. That
+  # invariant used to be enforced by accident, by a config-sniffing fallback
+  # that no supported checkpoint could actually reach.
+  records <- zuk_catalogue_records()
+  expect_gt(length(records), 0L)
+
+  for (record in records) {
+    architecture <- record$architecture
+    expect_true(
+      is.character(architecture) && length(architecture) == 1L &&
+        !is.na(architecture) && nzchar(architecture),
+      info = record$model_id
+    )
+    expect_true(zuk_registry_has(architecture), info = record$model_id)
+  }
+})

@@ -10,11 +10,18 @@
 #   ZUK_RUN_CHECKPOINT_TEST=toto2           just Toto
 #   ZUK_RUN_CHECKPOINT_TEST=toto2,chronos2  those two
 #   unset                                    none
+#
+# Parsed leniently: this is typed by hand at a shell prompt, so `TRUE` means
+# the same as `true`, and `true,toto2` enables everything rather than silently
+# reducing to Toto. `.github/scripts/checkpoint-tier.R` sources this file so
+# CI derives its cache key and download list from exactly this interpretation.
 checkpoint_tests_enabled <- function(architecture) {
-  requested <- Sys.getenv("ZUK_RUN_CHECKPOINT_TEST")
-  if (!nzchar(requested)) return(FALSE)
-  if (identical(requested, "true")) return(TRUE)
-  architecture %in% trimws(strsplit(requested, ",", fixed = TRUE)[[1]])
+  requested <- trimws(strsplit(
+    tolower(Sys.getenv("ZUK_RUN_CHECKPOINT_TEST")), ",", fixed = TRUE
+  )[[1]])
+  requested <- requested[nzchar(requested)]
+  if (!length(requested)) return(FALSE)
+  "true" %in% requested || tolower(architecture) %in% requested
 }
 
 skip_unless_checkpoint <- function(architecture) {

@@ -107,3 +107,36 @@ test_that("an incompatible checkpoint variant is rejected", {
 
   expect_error(toto_constructor(config, NULL), class = "zuk_error_checkpoint")
 })
+
+test_that("the float32 scaler fallback warns once per device, not once per batch", {
+  skip_if_no_torch()
+  skip_if_not(
+    isTRUE(tryCatch(torch::backends_mps_is_available(), error = function(e) FALSE)),
+    "MPS is not available; the float64 fallback cannot be exercised."
+  )
+  # The scaler runs once per batch, so an unconditional warning scales with the
+  # panel: the bug this guards against emitted one line per 64 series.
+  id <- paste0("zukzeit_toto_float64_", as.character(torch::torch_device("mps")))
+  rlang::reset_warning_verbosity(id)
+  withr::defer(rlang::reset_warning_verbosity(id))
+
+  config <- toto_synthetic_config()
+  config$device <- "mps"
+  model <- toto_constructor(config, toto_synthetic_weights(config))
+  series <- 100 + cumsum(rep(0.5, 160))
+
+  seen <- character()
+  collect <- function(expr) {
+    withCallingHandlers(
+      expr,
+      warning = function(w) {
+        seen <<- c(seen, conditionMessage(w))
+        invokeRestart("muffleWarning")
+      }
+    )
+  }
+
+  collect(for (i in 1:3) model$predict_fn(series, 16L, seq(0.1, 0.9, by = 0.1)))
+  expect_length(seen, 1L)
+  expect_match(seen[[1]], "Float64 is unsupported")
+})

@@ -233,24 +233,33 @@ test_that("unknown revisions and unregistered architectures fail before download
   expect_false(reached_download)
 })
 
-test_that("every supported checkpoint loads through the public loader", {
-  # Regression: the port tests construct handles by calling each architecture's
-  # constructor directly, which bypasses zuk_pretrained() entirely. Deriving the
-  # architecture from config.json rather than from the curated record left two
-  # of three supported checkpoints unloadable through the documented path --
-  # Toto's config names no architecture, and Chronos-2 names a class no alias
-  # covers -- and nothing caught it.
-  # This one walks every supported row, so it needs all of them.
-  for (architecture in zuk_models()$architecture) skip_unless_checkpoint(architecture)
-  skip_if_no_torch()
+# Regression: the port tests construct handles by calling each architecture's
+# constructor directly, which bypasses zuk_pretrained() entirely. Deriving the
+# architecture from config.json rather than from the curated record left two of
+# three supported checkpoints unloadable through the documented path -- Toto's
+# config names no architecture, and Chronos-2 names a class no alias covers --
+# and nothing caught it.
+#
+# One test per catalogue row rather than one loop over all of them: a single
+# test would have to skip unless every checkpoint is enabled, which means the
+# cheap `toto2` tier that runs on every push would never exercise the loader at
+# all, and a regression would surface only on main.
+for (row_index in seq_len(nrow(zuk_models()))) {
+  local({
+    row <- zuk_models()[row_index, ]
+    test_that(sprintf("%s loads through the public loader", row$model_id), {
+      skip_unless_checkpoint(row$architecture)
+      skip_if_no_torch()
+      # Pinned to CPU for the same reason as the smoke tests: the default
+      # resolves to CUDA or MPS on an accelerator host, and this is about the
+      # documented portable path.
+      on.exit(zuk_unload(), add = TRUE)
 
-  supported <- zuk_models()
-  for (index in seq_len(nrow(supported))) {
-    model <- zuk_pretrained(supported$model_id[[index]])
-    expect_s3_class(model, "zuk_model")
-    expect_identical(model$architecture, supported$architecture[[index]])
-    expect_identical(model$model_id, supported$model_id[[index]])
-    expect_identical(model$capabilities$max_context, supported$max_context[[index]])
-    zuk_unload()
-  }
-})
+      model <- zuk_pretrained(row$model_id, device = "cpu")
+      expect_s3_class(model, "zuk_model")
+      expect_identical(model$architecture, row$architecture)
+      expect_identical(model$model_id, row$model_id)
+      expect_identical(model$capabilities$max_context, row$max_context)
+    })
+  })
+}

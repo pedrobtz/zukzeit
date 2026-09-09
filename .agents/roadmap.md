@@ -11,7 +11,7 @@ This roadmap is release-driven. It defines exactly what `0.1.0` means, the
 ordered stages required to reach it, and the work deliberately deferred until
 after it.
 
-*Last reviewed: 2026-08-23.*
+*Last reviewed: 2026-09-09.*
 
 ---
 

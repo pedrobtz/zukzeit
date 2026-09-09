@@ -15,30 +15,52 @@ toto_round_up <- function(value, multiple) {
   as.integer(ceiling(value / multiple) * multiple)
 }
 
+# Which dtype the causal statistics accumulate in.
+#
+# The reference accumulates in float64 and falls back to float32 where the
+# backend has no double precision, warning when it does. MPS is exactly that
+# case; porting the float64 without the fallback made the model unusable on
+# Apple silicon.
+#
+# The probe is one element rather than a copy of the whole context: the caller
+# holds a (batch, context + horizon) tensor, and converting that twice per
+# batch to answer a question about the device is pure waste. The warning is
+# once per session per device, matching the reference's own `warnings.warn`
+# default --- the scaler runs once per batch, so warning unconditionally makes
+# a wide panel emit one line per 64 series.
+toto_scaler_dtype <- function(device) {
+  supported <- tryCatch(
+    {
+      torch::torch_zeros(1L, dtype = torch::torch_float64(), device = device)
+      TRUE
+    },
+    error = function(e) FALSE
+  )
+  if (supported) return(torch::torch_float64())
+  cli::cli_warn(
+    c(
+      "Float64 is unsupported on device {.val {as.character(device)}}.",
+      "i" = "Using float32 for the Toto scaler; forecasts may differ in the last digits."
+    ),
+    .frequency = "once",
+    .frequency_id = paste0("zukzeit_toto_float64_", as.character(device))
+  )
+  torch::torch_float32()
+}
+
 # `PatchedCausalStdScaler`. Statistics accumulate causally in float64 --- the
-# reference is explicit about the dtype, and float32 accumulation drifts
-# visibly over a long context --- then each patch adopts the statistics at its
-# own last position, so a patch is normalised by everything up to its end and
-# nothing after it.
+# reference is explicit about the dtype --- then each patch adopts the
+# statistics at its own last position, so a patch is normalised by everything
+# up to its end and nothing after it.
+#
+# What the dtype actually buys is resistance to cancellation in the Welford
+# increment, not resistance to long contexts. Measured against the float64
+# path, a zero-centred series agrees to about 1e-7 relative on the scale at
+# any length from 128 to 4096; a series offset by 1e4 disagrees by about
+# 2e-5, again at any length. Series far from zero are the case that matters.
 toto_causal_scaler <- function(data, mask, patch, minimum_scale = 1e-6,
                                correction = 1) {
-  # The reference accumulates in float64 and falls back to float32 where the
-  # backend has no double precision, warning when it does. MPS is exactly that
-  # case; porting the float64 without the fallback made the model unusable on
-  # Apple silicon.
-  precision <- tryCatch(
-    {
-      data$to(dtype = torch::torch_float64())
-      torch::torch_float64()
-    },
-    error = function(e) {
-      cli::cli_warn(c(
-        "Float64 is unsupported on device {.val {as.character(data$device)}}.",
-        "i" = "Using float32 for the scaler; forecasts may differ in the last digits."
-      ))
-      torch::torch_float32()
-    }
-  )
+  precision <- toto_scaler_dtype(data$device)
   high <- data$to(dtype = precision)
   keep <- mask$to(dtype = precision)
   counts <- torch::torch_cumsum(keep, dim = -1)$clamp_min(1)

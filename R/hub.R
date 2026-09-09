@@ -168,12 +168,14 @@ zuk_resolve_config <- function(model_id, revision, paths = NULL, record = NULL,
       )
     }
   )
-  # The curated catalogue is package-owned and names the architecture for every
-  # entry it publishes, so it decides. Sniffing `config.json` is a fallback for
-  # configs the catalogue does not describe: Toto's declares no architecture at
-  # all, and Chronos-2 declares a class name no alias covers, so deriving it
-  # from the file made two of three supported checkpoints unloadable.
-  config$architecture <- record$architecture %||% normalize_architecture(config)
+  # The curated catalogue is package-owned, names the architecture for every
+  # entry it publishes, and pins an immutable revision, so it is the only
+  # source of truth. Deriving the architecture from `config.json` instead made
+  # two of three supported checkpoints unloadable: Toto's config declares no
+  # architecture at all, and Chronos-2's declares `model_type = "t5"` with an
+  # `architectures` entry no alias covered. `test-catalogue.R` enforces that
+  # every published record names a registered architecture.
+  config$architecture <- record$architecture
   config$model_id <- model_id
   config$revision <- revision
   config$device <- device
@@ -185,34 +187,4 @@ zuk_resolve_config <- function(model_id, revision, paths = NULL, record = NULL,
 
 jsonlite_read <- function(path) {
   jsonlite::fromJSON(path, simplifyVector = TRUE)
-}
-
-# Map a Hub config to our architecture key. Hugging Face configs expose either a
-# top-level `architectures` array (transformers convention) or a `model_type`
-# field; different TSFMs use different conventions, so both are handled, then
-# normalised through a small alias table to the keys used in the registry.
-normalize_architecture <- function(config) {
-  arch <- config$architecture %||% config$model_type %||% config$architectures[1]
-  if (is.null(arch) || is.na(arch)) {
-    zuk_abort_checkpoint(
-      "Could not determine the architecture from the checkpoint config.",
-      tensor = "config.json",
-      expected = "architecture, model_type, or architectures",
-      actual = names(config)
-    )
-  }
-  arch <- tolower(as.character(arch)[1])
-  aliases <- c(
-    tinytimemixer              = "ttm",
-    tinytimemixerforprediction = "ttm",
-    ttm                        = "ttm",
-    timesfm                    = "timesfm",
-    timesfmmodelforprediction  = "timesfm",
-    patchedtimeseriesdecoder   = "timesfm",
-    chronos                    = "chronos2",
-    chronosbolt                = "chronos2",
-    chronos2                   = "chronos2"
-  )
-  mapped <- aliases[arch]
-  if (is.na(mapped)) arch else unname(mapped)
 }

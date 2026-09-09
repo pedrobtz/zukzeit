@@ -5,21 +5,6 @@ test_that("all built-in architectures are registered", {
   )
 })
 
-test_that("architecture keys are normalised from Hub config conventions", {
-  expect_identical(normalize_architecture(list(model_type = "TinyTimeMixer")), "ttm")
-  expect_identical(
-    normalize_architecture(list(architectures = "TinyTimeMixerForPrediction")),
-    "ttm"
-  )
-  expect_identical(normalize_architecture(list(model_type = "TimesFM")), "timesfm")
-  expect_identical(
-    normalize_architecture(list(architectures = "PatchedTimeSeriesDecoder")),
-    "timesfm"
-  )
-  expect_identical(normalize_architecture(list(model_type = "ChronosBolt")), "chronos2")
-  expect_identical(normalize_architecture(list(model_type = "PatchTST")), "patchtst")
-})
-
 test_that("Chronos-2 is a curated checkpoint rather than a special case", {
   # It was rejected by id before the native port existed. Now it resolves like
   # any other catalogue entry, and it is the only supported checkpoint that

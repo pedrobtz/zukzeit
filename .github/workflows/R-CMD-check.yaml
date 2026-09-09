@@ -79,6 +79,9 @@ jobs:
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      # Job-level, so the key-derivation script, the prefetch, and the suite
+      # all agree on which tier is running without repeating the value.
+      ZUK_RUN_CHECKPOINT_TEST: 'toto2'
 
     steps:
       - uses: actions/checkout@v6
@@ -95,21 +98,30 @@ jobs:
       - name: Install the LibTorch runtime
         run: Rscript -e 'torch::install_torch()'
 
-      - name: Cache the pinned Toto checkpoint
+      # Both the cache key and the prefetch list come from the catalogue, so a
+      # revision bump in R invalidates the cache on its own. Hand-copying SHAs
+      # into YAML is what left the key naming one checkpoint while three were
+      # being downloaded.
+      - name: Derive the cache key and download list from the catalogue
+        id: checkpoints
+        run: Rscript .github/scripts/checkpoint-tier.R >> "$GITHUB_OUTPUT"
+
+      - name: Cache the pinned checkpoints
         uses: actions/cache@v6
         with:
           path: ~/.cache/huggingface
-          key: hf-toto-8306a9801cf98c0f5ffe4b2dcc8f496e616d84d9
+          key: ${{ steps.checkpoints.outputs.key }}
 
-      - name: Prefetch the checkpoint
-        run: Rscript -e 'pkgload::load_all("."); zuk_download("Datadog/Toto-2.0-4m")'
+      # Explicit, and before the tests, so a Hub outage or a size mismatch
+      # fails here with a download error instead of surfacing as a parity
+      # failure.
+      - name: Prefetch the checkpoints
+        run: Rscript -e 'pkgload::load_all("."); for (id in strsplit("${{ steps.checkpoints.outputs.ids }}", ",")[[1]]) zuk_download(id)'
 
-      # Naming the architecture rather than `true` keeps this to the one 16 MB
-      # download; the other two stay skipped.
-      - name: Run the Toto checkpoint tests
-        env:
-          ZUK_RUN_CHECKPOINT_TEST: 'toto2'
-        run: Rscript -e 'pkgload::load_all("."); testthat::test_local(".", stop_on_failure = TRUE)'
+      # The tier is set at job level, so this is the same command the full gate
+      # runs; only ZUK_RUN_CHECKPOINT_TEST differs between the two jobs.
+      - name: Run the checkpoint-gated suite
+        run: Rscript -e 'testthat::test_local(".", stop_on_failure = TRUE)'
 
   # The numerical-parity gate: replay the committed golden fixtures against the
   # real pinned checkpoint. This is the only test that proves the port computes
@@ -128,6 +140,7 @@ jobs:
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      ZUK_RUN_CHECKPOINT_TEST: 'true'
 
     steps:
       - uses: actions/checkout@v6
@@ -144,27 +157,26 @@ jobs:
       - name: Install the LibTorch runtime
         run: Rscript -e 'torch::install_torch()'
 
-      # Keyed on every pinned revision, so the download happens once and
-      # bumping any checkpoint invalidates the cache by construction rather than
-      # by someone remembering to clear it. All three must appear here: naming
-      # only one silently re-downloaded the others on every run.
+      # Keyed on every pinned revision the tier covers, so the download happens
+      # once and bumping any checkpoint invalidates the cache by construction
+      # rather than by someone remembering to clear it. Derived rather than
+      # written out: the previous hand-maintained key named only TimesFM and
+      # silently re-downloaded the other two on every run.
+      - name: Derive the cache key and download list from the catalogue
+        id: checkpoints
+        run: Rscript .github/scripts/checkpoint-tier.R >> "$GITHUB_OUTPUT"
+
       - name: Cache the pinned checkpoints
         uses: actions/cache@v6
         with:
           path: ~/.cache/huggingface
-          key: >-
-            hf-timesfm-1d952420fba87f3c6dee4f240de0f1a0fbc790e3
-            -toto-8306a9801cf98c0f5ffe4b2dcc8f496e616d84d9
-            -chronos2-29ec3766d36d6f73f0696f85560a422f50e8498c
+          key: ${{ steps.checkpoints.outputs.key }}
 
       # Explicit, and before the tests, so a Hub outage or a size mismatch fails
       # here with a download error instead of surfacing as a parity failure.
       # About 1.4 GB across the three.
       - name: Prefetch the checkpoints
-        run: |
-          Rscript -e 'pkgload::load_all("."); for (id in zuk_models()$model_id) zuk_download(id)'
+        run: Rscript -e 'pkgload::load_all("."); for (id in strsplit("${{ steps.checkpoints.outputs.ids }}", ",")[[1]]) zuk_download(id)'
 
       - name: Run the checkpoint-gated suite
-        env:
-          ZUK_RUN_CHECKPOINT_TEST: 'true'
-        run: Rscript -e 'pkgload::load_all("."); testthat::test_local(".", stop_on_failure = TRUE)'
+        run: Rscript -e 'testthat::test_local(".", stop_on_failure = TRUE)'
