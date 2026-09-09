@@ -12,3 +12,4 @@
 ^\.venv$
 ^scratch$
 ^vignettes/articles$
+^\.review-fable\.md$
