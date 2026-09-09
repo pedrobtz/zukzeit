@@ -1,4 +1,7 @@
-The zukzeit package contains original work and a modified derivative of TimesFM.
+The zukzeit package contains original work and modified derivatives of three
+time-series foundation models: TimesFM, Toto 2.0, and Chronos-2. Each
+derivative is licensed under the Apache License, Version 2.0, whose complete
+text is distributed in LICENSES/Apache-2.0.txt.
 
 Original zukzeit work
 ------------------
@@ -27,18 +30,74 @@ Pinned source revision: 3dae50b20d7a724981e8ea36cda75578f80dd2dc
 The files above were translated from Python/PyTorch to R/torch and modified for
 R tensor conventions, checkpoint loading, engine contracts, device handling,
 batching, and package integration. They carry prominent modification notices.
-The complete Apache License, Version 2.0 is distributed in
-LICENSES/Apache-2.0.txt. The pinned upstream source contains no NOTICE file.
+The pinned upstream source contains no NOTICE file.
 
-The numerical reference files under tests/testthat/fixtures/timesfm/ were
-generated from the pinned official TimesFM implementation and checkpoint. They
-are distributed as upstream-derived test material under the same Apache-2.0
-terms. The fixture generator, input definitions, and R test harness are
-original zukzeit work.
+Modified Toto 2.0 derivative
+----------------------------
+
+The following files contain a translation and modification of the official
+Toto 2.0 Python/PyTorch implementation into native R/torch:
+
+  R/arch-toto.R
+  R/toto-inference.R
+  R/toto-module.R
+  R/toto-state.R
+
+Original work: Toto 2.0
+Copyright 2026 Datadog, Inc.
+License: Apache License, Version 2.0
+Source: https://github.com/DataDog/toto
+Pinned source revision: 46bd92adeeef6b3c2afb21008659f607fa203e38
+
+The files above were translated from Python/PyTorch to R/torch and modified for
+R tensor conventions, checkpoint loading, engine contracts, device handling,
+batching, and package integration, including the unit-scaling primitives, the
+causal patch scaler, the xPos rotary path, and the variate-axis attention
+arrangement. They carry prominent modification notices. The pinned upstream
+source contains no NOTICE file.
+
+Modified Chronos-2 derivative
+-----------------------------
+
+The following files contain a translation and modification of the official
+Chronos-2 Python/PyTorch implementation into native R/torch:
+
+  R/arch-chronos2.R
+  R/chronos2-inference.R
+  R/chronos2-module.R
+  R/chronos2-state.R
+
+Original work: Chronos-2
+Copyright Amazon.com, Inc. or its affiliates
+License: Apache License, Version 2.0
+Source: https://github.com/amazon-science/chronos-forecasting
+Pinned source revision: 8589d1988e9676817548e9626738ff06b6ca6370
+
+The files above were translated from Python/PyTorch to R/torch and modified for
+R tensor conventions, checkpoint loading, engine contracts, device handling,
+batching, and package integration, including the instance normalisation, the
+patch channel layout, the group-attention masking, and the grouped-input
+contract. They carry prominent modification notices. The pinned upstream source
+contains no NOTICE file.
+
+Numerical reference fixtures
+----------------------------
+
+The reference files under the following directories were generated from the
+corresponding pinned official implementation and checkpoint:
+
+  tests/testthat/fixtures/timesfm/
+  tests/testthat/fixtures/toto/
+  tests/testthat/fixtures/chronos2/
+
+They are distributed as upstream-derived test material under the same
+Apache-2.0 terms as the implementation each was generated from. The fixture
+generators, input definitions, and R test harness are original zukzeit work.
 
 Checkpoint weights
 ------------------
 
 Checkpoint weights are not included in this package. When explicitly requested
 by a user they are downloaded from their upstream repository and remain subject
-to the licence reported by zuk_models(), currently Apache-2.0 for TimesFM 2.5.
+to the licence reported by zuk_models(), currently Apache-2.0 for every
+supported checkpoint.

@@ -6,7 +6,7 @@
 \alias{zukzeit-package}
 \title{zukzeit: Native Time-Series Foundation Models}
 \description{
-Runs open time-series foundation models natively in 'R'. It provides a pretrained-checkpoint loader backed by a curated catalogue and an architecture constructor registry, a versioned execution contract and conformance harness, explicit capability metadata, batched panel inference with device resolution, and a standard forecast object backed by 'distributional'. The first supported native architecture is 'TimesFM' 2.5, loaded from an immutable checkpoint and verified against pinned reference outputs; see Das et al. (2024) \doi{10.48550/arXiv.2310.10688}. The engine is framework-neutral, with optional adapters for 'tidymodels' (via 'parsnip' and 'dials') and the 'tidyverts' ecosystem (via 'fabletools').
+Runs open time-series foundation models natively in 'R'. It provides a pretrained-checkpoint loader backed by a curated catalogue and an architecture constructor registry, a versioned execution contract and conformance harness, explicit capability metadata, batched panel inference with device resolution, and a standard forecast object backed by 'distributional'. The supported native architectures are 'TimesFM' 2.5, 'Toto' 2.0, and 'Chronos-2', each loaded from an immutable checkpoint and verified against pinned reference outputs; see Das et al. (2024) \doi{10.48550/arXiv.2310.10688}, Khwaja et al. (2026) \doi{10.48550/arXiv.2605.20119}, and Ansari et al. (2025) \doi{10.48550/arXiv.2510.15821}. The engine is framework-neutral, with optional adapters for 'tidymodels' (via 'parsnip' and 'dials') and the 'tidyverts' ecosystem (via 'fabletools').
 }
 \seealso{
 Useful links:
@@ -27,6 +27,8 @@ Authors:
 Other contributors:
 \itemize{
   \item Google LLC (TimesFM reference implementation) [copyright holder, contributor]
+  \item Datadog Inc. (Toto reference implementation) [copyright holder, contributor]
+  \item Amazon.com Inc. (Chronos-2 reference implementation) [copyright holder, contributor]
 }
 
 }

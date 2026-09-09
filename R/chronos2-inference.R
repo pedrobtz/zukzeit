@@ -7,7 +7,7 @@
 
 NEGATIVE_INFINITY <- -3.4028234663852886e38
 
-# `InstanceNorm`: whole-series standardization in float32, then arcsinh. Unlike
+# `InstanceNorm`: whole-series standardisation in float32, then arcsinh. Unlike
 # the Toto port's causal scaler this looks at the entire context at once, so a
 # patch is normalised by statistics that include everything after it.
 chronos2_instance_norm <- function(values, observed, epsilon = 1e-5) {

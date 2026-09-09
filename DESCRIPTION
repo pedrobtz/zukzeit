@@ -2,23 +2,31 @@ Package: zukzeit
 Title: Native Time-Series Foundation Models
 Version: 0.1.0
 Authors@R: c(
-    person("Pedro", "Botz", , "pedrobtz@gmail.com", role = c("aut", "cre", "cph")),
+    person("Pedro", "Botz", , "pedrobtz@gmail.com",
+           role = c("aut", "cre", "cph")),
     person("Google", "LLC", role = c("cph", "ctb"),
-           comment = "TimesFM reference implementation")
+           comment = "TimesFM reference implementation"),
+    person("Datadog", "Inc.", role = c("cph", "ctb"),
+           comment = "Toto reference implementation"),
+    person("Amazon.com", "Inc.", role = c("cph", "ctb"),
+           comment = "Chronos-2 reference implementation")
     )
 Description: Runs open time-series foundation models natively in 'R'. It
     provides a pretrained-checkpoint loader backed by a curated catalogue and an
     architecture constructor registry, a
     versioned execution contract and conformance harness, explicit capability
     metadata, batched panel inference with device resolution, and a standard
-    forecast object backed by 'distributional'. The first supported native
-    architecture is 'TimesFM' 2.5, loaded from an immutable checkpoint and
-    verified against pinned reference outputs; see Das et al. (2024)
-    <doi:10.48550/arXiv.2310.10688>. The engine is framework-neutral, with
+    forecast object backed by 'distributional'. The supported native
+    architectures are 'TimesFM' 2.5, 'Toto' 2.0, and 'Chronos-2', each loaded
+    from an immutable checkpoint and verified against pinned reference outputs;
+    see Das et al. (2024) <doi:10.48550/arXiv.2310.10688>, Khwaja et al. (2026)
+    <doi:10.48550/arXiv.2605.20119>, and Ansari et al. (2025)
+    <doi:10.48550/arXiv.2510.15821>. The engine is framework-neutral, with
     optional adapters for 'tidymodels' (via 'parsnip' and 'dials') and the
     'tidyverts' ecosystem (via 'fabletools').
 License: MIT + file LICENSE
 Encoding: UTF-8
+Language: en-GB
 Roxygen: list(markdown = TRUE)
 URL: https://github.com/pedrobtz/zukzeit
 BugReports: https://github.com/pedrobtz/zukzeit/issues

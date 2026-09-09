@@ -18,8 +18,9 @@ catalogue of natively implemented time-series foundation models (TSFMs) behind
 one capability-aware interface. `zukzeit` provides that layer:
 
 - **One loader.** `zuk_pretrained("...")` resolves a supported model into a
-  uniform handle. TimesFM 2.5 is the first supported native architecture; the
-  weight-free `stub` remains the fast engine test fixture.
+  uniform handle. TimesFM 2.5, Toto 2.0 4M, and Chronos-2 are the supported
+  native architectures; the weight-free `stub` remains the fast engine test
+  fixture.
 - **One contract.** Every architecture implements
   `predict_fn(context, h, quantile_levels)` and nothing more. See
   `` ?`zuk-architecture-contract` `` and verify yours with
@@ -150,18 +151,20 @@ zuk_models() # safe default: supported checkpoints only
 | Model | id | Status |
 |-------|----|--------|
 | Stub | `stub` | executable random-walk test fixture; not a foundation model |
-| TimesFM 2.5 | `google/timesfm-2.5-200m-pytorch` | supported native point and 0.1–0.9 quantile inference |
+| TimesFM 2.5 | `google/timesfm-2.5-200m-pytorch` | supported; 16256 context, 0.1–0.9 quantiles, 925 MB |
+| Chronos-2 | `amazon/chronos-2` | supported; 8192 context, 21 quantile levels, multivariate and covariates, 478 MB |
+| Toto 2.0 4M | `Datadog/Toto-2.0-4m` | supported; 4096 context, 0.1–0.9 quantiles, 16 MB |
 | TTM (TinyTimeMixer) | `ibm-granite/granite-timeseries-ttm-r2` | registered scaffold; deferred until point-only output is supported |
-| Chronos-2 | `amazon/chronos-2` | unregistered until the required native `0.1.0` port passes conformance and parity |
 
-TimesFM is marked supported because it passes both the architecture conformance
-gate and every committed numerical-parity fixture against the pinned official
-implementation.
+The three are complementary rather than ranked. TimesFM has by far the longest
+context, Toto is the small CPU-friendly default, and Chronos-2 is the only one
+that accepts covariates and multivariate groups.
 
-The release roadmap adds Toto 2.0 4M and a new native Chronos-2 port before
-`0.1.0`; Granite PatchTST-FM and Sundial are the selected later capability
-representatives. Planned models do not appear in `zuk_models()` until their
-metadata and executable support gates are complete.
+Each is marked supported because it passes both the architecture conformance
+gate and every committed numerical-parity fixture against its pinned official
+implementation. Granite PatchTST-FM and Sundial are the selected later
+capability representatives. Planned models do not appear in `zuk_models()`
+until their metadata and executable support gates are complete.
 
 `zuk_models()` is package-owned: `supported` means the checkpoint has passed
 `zukzeit`'s release gates, not that another package registered a constructor in the
