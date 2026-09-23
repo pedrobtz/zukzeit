@@ -11,7 +11,7 @@ This roadmap is release-driven. It defines exactly what `0.1.0` means, the
 ordered stages required to reach it, and the work deliberately deferred until
 after it.
 
-*Last reviewed: 2026-08-23.*
+*Last reviewed: 2026-09-23.*
 
 ---
 
@@ -43,12 +43,19 @@ The repository already contains useful foundations:
 - stub-based tests of the core execution path, plus opt-in real-checkpoint
   smoke tests covering all four user journeys.
 
-The important remaining `0.1.0` gaps are:
+The important remaining `0.1.0` gaps are documentation, not code. The review
+of 2026-09-23 found the maintained documents disagreeing with the catalogue:
 
-- TTM has no weight map, module, or forward pass and remains outside `0.1.0`;
-- release hardening must be repeated after both architectures land.
+- the README still names TimesFM as the only supported architecture and
+  describes Chronos-2 as unregistered, while `zuk_models()` returns all three;
+- the `Description` field still names TimesFM alone;
+- `cran-comments.md` records a TimesFM-only check from 2026-09-04 and says the
+  package is not yet the release candidate;
+- TTM has no weight map, module, or forward pass and remains outside `0.1.0`.
 
-These gaps determine the stages below.
+Stage 7 closes these. The catalogue landscape was also re-read on
+2026-09-23; see [Landscape review](#landscape-review-2026-09-23) for what
+changed upstream and what it means for the releases after `0.1.0`.
 
 ---
 
@@ -230,7 +237,11 @@ package loading or plain-R inference.
 ### The consumer API is a release contract
 
 The surface in [`consumer-api.md`](./consumer-api.md) is required for `0.1.0`.
-`tsai` is a downstream consumer and creates no reverse dependency, but it must
+The downstream consumer lives in the
+[`harus`](https://github.com/pedrobtz/harus) repository; these documents have
+called it `tsai`, and whether it keeps the repository name or the working
+name is an open decision recorded in its own roadmap. It creates no reverse
+dependency, but it must
 be able to enumerate supported checkpoints offline, prefetch weights, reuse a
 constructed handle, branch on classed failures, and use `TSFM()` inside
 fabletools. Selection, fallback policy, backtesting, and LLM orchestration stay
@@ -261,6 +272,50 @@ Priority meanings:
 | **P1** | [Granite PatchTST-FM R1](https://huggingface.co/ibm-granite/granite-timeseries-patchtst-fm-r1) | Reconstruction representative with dense quantiles and simultaneous missing-value imputation | 99 trained quantiles plus imputation | Apache-2.0 | Reconstruction/masking output contract and 260M native port |
 | **P1** | [Sundial / Timer 3.0](https://huggingface.co/thuml/sundial-base-128m) | Generative representative supporting arbitrary statistics from forecast samples | Sample paths | Apache-2.0 | Sample-path contract and flow-matching sampler |
 
+### Landscape review 2026-09-23
+
+Read against the catalogue above, one month after the last review. Findings
+that change a decision are recorded here; the rest confirm the exclusions
+below.
+
+- **TimesFM 3.0** shipped in August 2026 with 330M parameters, native
+  multivariate inputs, and past and future covariates. Its source is
+  Apache-2.0 but its weights carry a non-commercial licence. `zukzeit` stays
+  on the pinned 2.5 checkpoint, whose weights are Apache-2.0, and TimesFM 3.0
+  joins the excluded list until its weight terms change.
+- **Toto 2.0** is a five-checkpoint family from one recipe: 4m, 22m, 313m,
+  1B, and 2.5B. The 22m checkpoint shares the 4m architecture and is the
+  natural second Toto row: it needs a configuration record, a manifest, and
+  fixtures, not a new port.
+- **Chronos-Bolt** ships at 9M, 21M, 48M, and 205M parameters as a T5
+  encoder-decoder with a direct multi-quantile head. The Chronos-2 port
+  already carries the T5 block conventions, so Bolt is a modest port and the
+  fastest CPU option in the family.
+- **TiRex-2** is distributed under the NXAI community licence and **Moirai 2**
+  for research only, which confirms both exclusions.
+- **Benchmarks** on GIFT-Eval and fev-bench place Chronos-2, TimesFM 2.5, and
+  TiRex at the top. The `0.1.0` catalogue therefore covers two of the current
+  top three.
+- **Classification foundation models** are the new family in this space and
+  have no R implementation at all. Mantis-8M, MantisV2, and Mantis+ from
+  `paris-noah` on the Hub are Apache-2.0, safetensors, and about 8M
+  parameters: a ViT-like encoder over patches of a 512-length series that
+  returns an embedding for a downstream classifier. MOMENT-1 from AutonLab is
+  MIT and adds reconstruction. These need an embedding contract beside the
+  forecasting one, not a new engine; see [After `0.1.0`](#after-010).
+- **Typed-decision classifiers** such as Typesafe AI's Jev, released on
+  2026-09-19, and its open imitation Laya are text and JSON classifiers built
+  on encoder language models. They are not time-series models and are outside
+  this package; the portfolio RFC records them as a separate candidate.
+
+The priority table gains three P1 rows from this review:
+
+| Priority | Family and canonical checkpoint | Why it matters | Native output | Weight licence | Main blocker |
+|---|---|---|---|---|---|
+| **P1** | [Toto 2.0 22M](https://huggingface.co/Datadog/Toto-2.0-22m) | Same architecture as the certified 4M; stronger small model | 0.1–0.9 quantiles | Apache-2.0 | Configuration record, manifest, and fixtures |
+| **P1** | [Chronos-Bolt small](https://huggingface.co/amazon/chronos-bolt-small) | Fastest CPU model in the family; T5 blocks shared with Chronos-2 | Direct quantiles | Apache-2.0 | Bolt-specific patch embedding and decoder head port |
+| **P1** | [Mantis-8M](https://huggingface.co/paris-noah/Mantis-8M) | First classification representative; ~8M parameters, CPU friendly | Embedding vector | Apache-2.0 | Embedding contract and a recipes step |
+
 ### Support order is not the same as model rank
 
 Implementation order follows contract and porting dependencies:
@@ -281,6 +336,10 @@ variants are smoke-tested outside the normal check path.
 
 - Hosted-only services such as TimeGPT: they are API clients, not local model
   engines.
+- TimesFM 3.0: its weights are licensed for non-commercial use only. The 2.5
+  checkpoint under Apache-2.0 remains the supported TimesFM generation.
+- Typed-decision classifiers such as Jev and Laya: they classify text and
+  JSON, not time series, and belong in a separate package if at all.
 - Granite TTM is not a current target because Toto fills the small local-model
   slot while preserving probabilistic output.
 - TiRex-2 is a permissively licensed alternative to Chronos-2, but supporting
@@ -312,9 +371,9 @@ when its exit gate is executable and green.
 | 2 | Build the reference, loader, download API, and handle LRU | **Implementation complete** |
 | 3 | Implement safe native TimesFM inference | **Implementation complete** |
 | 4 | Prove all four user-facing workflows | **Implementation complete** |
-| 5 | Implement and certify Toto 2.0 4M | **Not started** |
-| 6 | Add contract v2 and implement native Chronos-2 | **Not started** |
-| 7 | Validate all three models and release `0.1.0` | **Blocked on stages 5–6** |
+| 5 | Implement and certify Toto 2.0 4M | **Implementation complete** |
+| 6 | Add contract v2 and implement native Chronos-2 | **Implementation complete** |
+| 7 | Validate all three models and release `0.1.0` | **In progress: documentation alignment outstanding** |
 
 ### Stage 0 — Honest baseline
 
@@ -686,6 +745,28 @@ Exit gate:
   all four user surfaces, deterministic/quiet/interrupt tests, and becomes a
   `supported` catalogue row.
 
+Close-out on 2026-09-04:
+
+- `R/arch-toto.R`, `R/toto-module.R`, `R/toto-inference.R`, and
+  `R/toto-state.R` implement the native port; the trained context length of
+  4,096 is recovered from the stored `residual_attn_ratio` rather than assumed,
+  and configuration validation checks the flags that change the arithmetic
+  without changing any shape;
+- `max_horizon` is declared as 768 because upstream chunks longer horizons
+  through a median feedback loop that the port deliberately does not
+  implement; longer requests are refused rather than decoded outside the
+  certified path;
+- six committed fixtures each reach a branch the others do not, including the
+  negative branch of the inverse sinh, the causal scaler's minimum-scale clamp,
+  and a two-length batch that upstream cannot batch; worst parity headroom is
+  10.8 percent of the `atol`/`rtol` budget on the short-context case;
+- running the gate against a real checkpoint exposed that batch/loop agreement
+  had been asserted with a bare `1e-8` tolerance that no float32 checkpoint
+  can meet; the gate now uses the same `atol + rtol * |loop|` criterion as the
+  parity fixtures;
+- `Datadog/Toto-2.0-4m` is a `supported` catalogue row; the 16 MB checkpoint
+  now backs a parity job on every push and pull request.
+
 ### Stage 6 — Universal inputs and native Chronos-2
 
 Extend the engine for the multivariate/covariate representative while keeping
@@ -715,6 +796,26 @@ Exit gate:
   every required input mode, all applicable user surfaces, lifecycle and
   interruption tests, and becomes a `supported` catalogue row without
   regressing contract-v1 models.
+
+Close-out on 2026-09-05:
+
+- contract v2 is frozen in [`contract-v2.md`](./contract-v2.md) and shipped in
+  the engine as grouped inputs; contract-v1 TimesFM and Toto handles run
+  unchanged without synthetic covariate arguments;
+- `R/arch-chronos2.R`, `R/chronos2-module.R`, `R/chronos2-inference.R`, and
+  `R/chronos2-state.R` implement the native encoder, group attention, and
+  requested-quantile head; the capability record declares `multivariate`,
+  `past_covariates`, and `future_covariates` as `TRUE` because each has an
+  executable, fixture-backed path;
+- seven committed fixtures cover the contract as well as the arithmetic: the
+  future-covariate case also flips the known future and asserts the forecast
+  moves, and the independent-batch case asserts that distinct groups cannot
+  leak; worst parity headroom is 4.0 percent of budget on the long-horizon
+  case;
+- the pre-port rejection of Chronos-2 identifiers is lifted and
+  `amazon/chronos-2` is a `supported` catalogue row;
+- suites: 612 pass by default, 787 under `ZUK_RUN_CHECKPOINT_TEST=true`;
+  `R CMD check --as-cran` reports 0 errors, 0 warnings, and 2 notes.
 
 ### Stage 7 — Release hardening
 
@@ -780,6 +881,28 @@ versioned `0.1.0`, but it is no longer a release candidate. Remaining before
 the tag: complete and certify Toto and Chronos-2, repeat the full local and
 remote validation on all three models, record the green result, and tag.
 
+Remaining on 2026-09-23, after Stages 5 and 6 closed:
+
+- align the README with the catalogue: the introduction names TimesFM as the
+  only supported architecture, the model table lists Chronos-2 as
+  unregistered, and the paragraph after it still describes Toto and Chronos-2
+  as roadmap additions;
+- rewrite the `Description` field to name all three supported architectures,
+  and add the Toto and Chronos-2 citations beside the TimesFM one;
+- extend `inst/COPYRIGHTS` and `Authors@R`, which today name only Google's
+  TimesFM derivative, to the Toto and Chronos-2 ports on the same basis: the
+  translated files, the pinned upstream revisions, and the Apache-2.0
+  derivative-work notice;
+- refresh `cran-comments.md` from a full check of the current tree with all
+  three checkpoint tiers, and drop the paragraph that says this is not yet the
+  release candidate;
+- decide the dependabot pull request that bumps the Python reference pin under
+  `.agents/`: it fails `R-CMD-check`, so either the pinned generator
+  environment stays frozen and the update is declined, or the fixtures are
+  regenerated and re-verified under the new pin;
+- rerun the full checkpoint tier on `main`, record the green result here, tag
+  `v0.1.0`, and submit.
+
 ---
 
 ## Engine boundary
@@ -815,10 +938,44 @@ Rules:
 
 ## After `0.1.0`
 
-The next releases add the two remaining capability representatives selected for
-the roadmap rather than additional models that duplicate an existing slot.
+The next releases first widen the catalogue where the existing ports already
+pay for the work, then add the embedding contract that classification models
+need, and only then the two remaining forecasting capability representatives.
+The order was set by the landscape review of 2026-09-23.
 
-### `0.2.0` candidate — reconstruction and Granite PatchTST-FM
+### `0.2.0` candidate — catalogue breadth and the embedding contract
+
+Two cheap forecasting rows that reuse certified code:
+
+- add `Datadog/Toto-2.0-22m` as a second row of the `toto2` architecture with
+  its own manifest, configuration validation, and parity fixtures, keeping
+  the 4M checkpoint as the CI fixture model;
+- port Chronos-Bolt small, reusing the T5 block conventions from the Chronos-2
+  port, and certify it under contract v1;
+- add a point-only output type so that a checkpoint without native quantiles
+  can be honest about it; this unblocks TTM if demand appears.
+
+One new contract, for classification and representation models:
+
+- define an embedding contract beside the forecasting one:
+  `embed_fn(context) -> matrix[n, d]`, batched as
+  `embed_batch_fn(contexts, device)`, with the same conformance harness
+  pattern, capability metadata (`embedding_dim`, required input length,
+  channel support), typed errors, and catalogue columns;
+- implement Mantis-8M natively and certify it against fixtures generated by
+  the pinned `mantis-tsfm` reference, with MantisV2 and Mantis+ as compatible
+  checkpoints of the same architecture;
+- expose a `zuk_embed()` verb on data frames and panels and a `recipes` step
+  in `Suggests`, so any tidymodels classifier consumes the embeddings and
+  `zukzeit` ships no classifier of its own;
+- keep the forecasting surface unchanged: a model handle advertises the
+  contracts it implements, and `forecast()` on an embedding-only model fails
+  as a capability error before any tensor work.
+
+Also in `0.2.0`: certify accelerator paths and benchmark batching across the
+supported family, and submit to CRAN if `0.1.0` was released only on GitHub.
+
+### `0.3.0` candidate — reconstruction and Granite PatchTST-FM
 
 - extend the output contract for reconstructed historical values and explicit
   missingness masks;
@@ -826,10 +983,10 @@ the roadmap rather than additional models that duplicate an existing slot.
   reconstruction semantics, and simultaneous imputation;
 - add user-facing retrieval of imputed values without changing ordinary
   forecast output;
-- certify accelerator paths and benchmark batching across the supported family;
-- submit to CRAN if `0.1.0` was initially released only on GitHub.
+- consider MOMENT-1 under the same reconstruction contract, since it also
+  serves the embedding contract.
 
-### `0.3.0` candidate — sample paths and Sundial
+### `0.4.0` candidate — sample paths and Sundial
 
 - add a sample-path output contract with deterministic seed handling and clear
   memory limits;
@@ -887,7 +1044,7 @@ entirely on checkpoint-backed fixtures.
 
 ### Later releases
 
-- reconsider TTM only if point-only demand justifies a separate output contract;
+- reconsider TTM once the point-only output type from `0.2.0` exists;
 - reconsider TiRex-2 only if it offers enough value beyond Chronos-2 to justify
   a second multivariate/covariate architecture;
 - conformal and reconciliation examples through existing R packages;
