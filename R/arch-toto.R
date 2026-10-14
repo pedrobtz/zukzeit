@@ -127,7 +127,7 @@ toto_capabilities <- function(config) {
 }
 
 toto_constructor <- function(config, weights = NULL) {
-  zuk_require_namespace("torch", reason = "It is needed for native Toto inference.")
+  zuk_require_namespace("zulm", reason = "It is the tensor runtime for native Toto inference.")
   config$quantiles <- as.numeric(config$quantiles %||% seq(0.1, 0.9, by = 0.1))
   config$context_length <- toto_context_length(config)
   validate_toto_config(config)
@@ -140,14 +140,11 @@ toto_constructor <- function(config, weights = NULL) {
       actual = NULL
     )
   }
-  module <- toto_module(config)
-  toto_load_module_weights(module, weights, config)
-  device <- config$device %||% "cpu"
-  module$to(device = torch::torch_device(device))
-  module$eval()
+  runtime <- toto_zulm_runtime(config, weights)
+  # zulm runs on the CPU; zukzeit's `device` resolves to it (zulm D33)
+  device <- "cpu"
+  config$device <- device
 
-  # See the note in arch-timesfm.R: writing `device = device` here would make
-  # the default a recursive self-reference rather than the loaded device.
   predict_batch <- function(contexts, horizons, quantile_levels,
                             device = config$device) {
     if (!identical(as.character(device), as.character(config$device))) {
@@ -160,7 +157,7 @@ toto_constructor <- function(config, weights = NULL) {
         resolved_device = config$device
       )
     }
-    toto_predict_batch(module, contexts, horizons, quantile_levels, config, device)
+    toto_zulm_predict_batch(runtime, contexts, horizons, quantile_levels, config)
   }
   predict_one <- function(context, h, quantile_levels) {
     predict_batch(list(context), as.integer(h), quantile_levels, device)[[1]]
@@ -175,6 +172,6 @@ toto_constructor <- function(config, weights = NULL) {
     model_id = config$model_id %||% NA_character_,
     revision = config$revision %||% NA_character_,
     device = device,
-    params = module
+    params = runtime$store$params
   )
 }

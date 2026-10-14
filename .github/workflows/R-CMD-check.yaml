@@ -111,6 +111,58 @@ jobs:
           ZUK_RUN_CHECKPOINT_TEST: 'toto2'
         run: Rscript -e 'pkgload::load_all("."); testthat::test_local(".", stop_on_failure = TRUE)'
 
+  # Toto 2.0 4M on zulm's tensor runtime (zulm's roadmap, Stage 12): the
+  # committed golden fixtures replayed on every platform, with zulm installed
+  # from its main branch through Remotes. No LibTorch is needed for Toto.
+  parity-zulm:
+    runs-on: ${{ matrix.config.os }}
+    name: Toto parity on zulm, ${{ matrix.config.os }} (${{ matrix.config.r }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: macos-latest,   r: 'release'}
+          - {os: macos-15-intel, r: 'release'}
+          - {os: windows-latest, r: 'release'}
+          - {os: ubuntu-latest,  r: 'devel', http-user-agent: 'release'}
+          - {os: ubuntu-latest,  r: 'release'}
+          - {os: ubuntu-latest,  r: 'oldrel-1'}
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.config.r }}
+          http-user-agent: ${{ matrix.config.http-user-agent }}
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::testthat, any::pkgload
+
+      - name: Cache the pinned Toto checkpoint
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/huggingface
+          key: hf-toto-8306a9801cf98c0f5ffe4b2dcc8f496e616d84d9
+
+      - name: zulm and its build
+        run: Rscript -e 'print(c(zulm = as.character(packageVersion("zulm")), unlist(zulm::zulm_info()[c("variant", "ggml_version")])))'
+
+      - name: Toto parity and conformance on zulm
+        env:
+          ZUK_RUN_CHECKPOINT_TEST: 'toto2'
+        run: |
+          pkgload::load_all(".")
+          zuk_download("Datadog/Toto-2.0-4m")
+          testthat::test_file("tests/testthat/test-parity-toto.R", stop_on_failure = TRUE)
+        shell: Rscript {0}
+
   # The numerical-parity gate: replay the committed golden fixtures against the
   # real pinned checkpoint. This is the only test that proves the port computes
   # the right model rather than merely a well-formed one, so it deserves to be a

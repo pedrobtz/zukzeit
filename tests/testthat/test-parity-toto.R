@@ -10,7 +10,7 @@ toto_fixture_dir <- function() test_path("fixtures", "toto")
 
 skip_unless_toto_checkpoint <- function() {
   skip_unless_checkpoint("toto2")
-  skip_if_no_torch()
+  skip_if_not_installed("zulm")
   skip_if_not_installed("jsonlite")
   skip_if_not(
     dir.exists(toto_fixture_dir()) &&
@@ -40,10 +40,7 @@ toto_checkpoint_model <- function(revision) {
   config$model_id <- "Datadog/Toto-2.0-4m"
   config$revision <- revision
   config$device <- "cpu"
-  toto_constructor(
-    config,
-    safetensors::safe_load_file(paths[["model.safetensors"]], framework = "torch")
-  )
+  toto_constructor(config, zulm::zl_safetensors_read(paths[["model.safetensors"]]))
 }
 
 test_that("native Toto matches the reference implementation on golden fixtures", {
